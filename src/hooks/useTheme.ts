@@ -24,8 +24,11 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = resolved
 }
 
-export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
-  const [theme, setThemeState] = useState<Theme>('auto')
+export function useTheme(): {
+  theme: Theme | null
+  setTheme: (theme: Theme) => void
+} {
+  const [theme, setThemeState] = useState<Theme | null>(null)
 
   useEffect(() => {
     const initial = getInitialTheme()

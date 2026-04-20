@@ -10,62 +10,40 @@
 
 :root {
   --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0 0);
   --card: oklch(1 0 0);
-  --popover: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.62 0.19 260);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: var(--color-red-800);
-  --info: var(--color-violet-500);
-  --info-foreground: var(--color-violet-900);
-  --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-900);
-  --warning: var(--color-yellow-500);
-  --warning-foreground: var(--color-yellow-900);
-  --invert: var(--color-neutral-900);
-  --invert-foreground: var(--color-neutral-50);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --secondary: oklch(0.9 0 0);
+  --secondary-foreground: oklch(0.25 0 0);
+  --muted: oklch(0.92 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --border: oklch(0.85 0 0);
+  --input: oklch(0.93 0 0);
+  --ring: oklch(0.62 0.22 270 / 0.35);
+  --primary: oklch(0.59 0.2 270);
+  --primary-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --success: oklch(0.62 0.22 162);
+  --success-foreground: oklch(0.98 0 0);
+  --info: oklch(0.62 0.22 200);
+  --info-foreground: oklch(0.98 0 0);
+  --warning: oklch(0.85 0.2 100);
+  --warning-foreground: oklch(0.22 0.06 100);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --card: oklch(0.205 0 0);
-  --popover: oklch(0.205 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.62 0.19 260);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: var(--color-red-600);
-  --info: var(--color-violet-500);
-  --info-foreground: var(--color-violet-600);
-  --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-600);
-  --warning: var(--color-yellow-500);
-  --warning-foreground: var(--color-yellow-600);
-  --invert: var(--color-neutral-700);
-  --invert-foreground: var(--color-neutral-50);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.9 0 0);
+  --card: oklch(0.12 0 0);
+  --card-foreground: oklch(0.88 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.85 0 0);
+  --muted: oklch(0.15 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --border: oklch(0.25 0 0);
+  --input: oklch(0.22 0 0);
+  --ring: oklch(0.62 0.22 270 / 0.4);
 }
 
 @theme inline {
@@ -74,16 +52,12 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-info: var(--info);
@@ -92,8 +66,6 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
-  --color-invert: var(--invert);
-  --color-invert-foreground: var(--invert-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
