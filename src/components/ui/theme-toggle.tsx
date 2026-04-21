@@ -21,7 +21,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      size="icon"
+      size="icon-lg"
       variant="secondary"
     >
       {theme === null ? null : theme === 'light' ? (
