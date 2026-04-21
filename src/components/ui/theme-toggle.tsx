@@ -1,4 +1,4 @@
-import { useTheme } from '@/hooks/useTheme'
+import { useTheme } from '#/hooks/useTheme'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from './button'
 
@@ -21,7 +21,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      size="icon-lg"
+      size="icon"
       variant="secondary"
     >
       {theme === null ? null : theme === 'light' ? (

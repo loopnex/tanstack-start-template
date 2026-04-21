@@ -1,27 +1,27 @@
-import { Button } from '@/components/ui/button'
+import { Button } from '#/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
+} from '#/components/ui/card'
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '@/components/ui/field'
-import { FormError } from '@/components/ui/form-error'
+} from '#/components/ui/field'
+import { FormError } from '#/components/ui/form-error'
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from '@/components/ui/input-group'
-import { signUp } from '@/lib/auth-client'
-import { signUpSchema, type SignUpSchemaType } from '@/schema/authSchema'
+} from '#/components/ui/input-group'
+import { signUp } from '#/lib/better-auth/auth-client'
+import { signUpSchema, type SignUpSchemaType } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Building, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
@@ -51,7 +51,7 @@ function SignUpPage() {
           setPendingAuth(true)
           setFormError('')
         },
-        onSuccess: () => navigate({ to: '/' }),
+        onSuccess: () => navigate({ to: '/dashboard' }),
         onError: (ctx) => setFormError(ctx.error.message),
       },
     )
