@@ -23,7 +23,7 @@ import {
 import { signUp } from '#/lib/better-auth/auth-client'
 import { signUpSchema, type SignUpSchemaType } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { Building, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -36,7 +36,7 @@ function SignUpPage() {
   const [pendingAuth, setPendingAuth] = useState(false)
   const [formError, setFormError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const form = useForm({
     resolver: zodResolver(signUpSchema),
@@ -51,7 +51,10 @@ function SignUpPage() {
           setPendingAuth(true)
           setFormError('')
         },
-        onSuccess: () => navigate({ to: '/dashboard' }),
+        onSuccess: () => {
+          router.invalidate()
+          router.navigate({ to: '/dashboard' })
+        },
         onError: (ctx) => setFormError(ctx.error.message),
       },
     )

@@ -7,13 +7,13 @@ export default function ThemeToggle() {
 
   function toggleTheme() {
     const next =
-      theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'
+      theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
     setTheme(next)
   }
 
   const label =
-    theme === 'auto'
-      ? 'Theme mode: auto (system). Click to switch to light mode.'
+    theme === 'system'
+      ? 'Theme mode: system. Click to switch to light mode.'
       : `Theme mode: ${theme}. Click to switch mode.`
 
   return (

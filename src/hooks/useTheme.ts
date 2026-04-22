@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
 
-export type Theme = 'light' | 'dark' | 'auto'
+export type Theme = 'light' | 'dark' | 'system'
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') {
-    return 'auto'
+    return 'system'
   }
 
   const stored = window.localStorage.getItem('theme')
-  if (stored === 'light' || stored === 'dark' || stored === 'auto') {
+  if (stored === 'light' || stored === 'dark' || stored === 'system') {
     return stored
   }
 
-  return 'auto'
+  return 'system'
 }
 
 function applyTheme(theme: Theme) {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const resolved = theme === 'auto' ? (prefersDark ? 'dark' : 'light') : theme
+  const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme
 
   document.documentElement.classList.remove('light', 'dark')
   document.documentElement.classList.add(resolved)
@@ -40,7 +40,7 @@ export function useTheme(): {
     if (theme !== 'auto') return
 
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme('auto')
+    const onChange = () => applyTheme('system')
 
     media.addEventListener('change', onChange)
     return () => media.removeEventListener('change', onChange)

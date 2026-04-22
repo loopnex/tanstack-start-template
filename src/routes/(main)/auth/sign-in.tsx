@@ -23,10 +23,11 @@ import {
 import { signIn } from '#/lib/better-auth/auth-client'
 import { signInSchema, type SignInSchemaType } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/(main)/auth/sign-in')({
   component: SignInPage,
@@ -36,7 +37,7 @@ function SignInPage() {
   const [pendingAuth, setPendingAuth] = useState(false)
   const [formError, setFormError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const form = useForm({
     resolver: zodResolver(signInSchema),
@@ -51,7 +52,11 @@ function SignInPage() {
           setPendingAuth(true)
           setFormError('')
         },
-        onSuccess: () => navigate({ to: '/dashboard' }),
+        onSuccess: () => {
+          toast.success('Login successful!')
+          router.invalidate()
+          router.navigate({ to: '/dashboard' })
+        },
         onError: (ctx) => setFormError(ctx.error.message),
       },
     )

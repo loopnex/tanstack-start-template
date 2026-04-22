@@ -1,3 +1,4 @@
+import { Toaster } from '#/components/ui/sonner'
 import { getSession } from '#/lib/better-auth/getSession'
 import { SIDEBAR_INIT_SCRIPT, THEME_INIT_SCRIPT } from '#/lib/scripts'
 import TanStackQueryDevtools from '#/lib/tanstack-query/devtools'
@@ -52,6 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <Toaster />
         {children}
         <TanStackDevtools
           config={{
