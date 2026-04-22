@@ -1,5 +1,5 @@
 CREATE TABLE `accounts` (
-	`id` text,
+	`id` text PRIMARY KEY NOT NULL,
 	`account_id` text NOT NULL,
 	`provider_id` text NOT NULL,
 	`user_id` text NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE `accounts` (
 --> statement-breakpoint
 CREATE INDEX `account_userId_idx` ON `accounts` (`user_id`);--> statement-breakpoint
 CREATE TABLE `sessions` (
-	`id` text,
+	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
 	`token` text NOT NULL,
 	`ip_address` text,
@@ -32,12 +32,12 @@ CREATE TABLE `sessions` (
 CREATE UNIQUE INDEX `sessions_token_unique` ON `sessions` (`token`);--> statement-breakpoint
 CREATE INDEX `session_userId_idx` ON `sessions` (`user_id`);--> statement-breakpoint
 CREATE TABLE `users` (
-	`id` text,
+	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`email` text NOT NULL,
 	`email_verified` integer DEFAULT false NOT NULL,
 	`role` text,
-	`banned` integer,
+	`banned` integer DEFAULT false,
 	`ban_reason` text,
 	`ban_expires` integer,
 	`image` text,
@@ -47,7 +47,7 @@ CREATE TABLE `users` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);--> statement-breakpoint
 CREATE TABLE `verifications` (
-	`id` text,
+	`id` text PRIMARY KEY NOT NULL,
 	`identifier` text NOT NULL,
 	`value` text NOT NULL,
 	`expires_at` integer NOT NULL,

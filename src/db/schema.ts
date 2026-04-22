@@ -16,7 +16,9 @@ const timestamps = {
 
 // Users
 export const users = sqliteTable('users', {
-  id: text('id').$defaultFn(() => ulid()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => ulid()),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' })
@@ -34,7 +36,9 @@ export const users = sqliteTable('users', {
 export const sessions = sqliteTable(
   'sessions',
   {
-    id: text('id').$defaultFn(() => ulid()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
     token: text('token').notNull().unique(),
     ipAddress: text('ip_address'),
@@ -52,7 +56,9 @@ export const sessions = sqliteTable(
 export const accounts = sqliteTable(
   'accounts',
   {
-    id: text('id').$defaultFn(() => ulid()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
     accountId: text('account_id').notNull(),
     providerId: text('provider_id').notNull(),
     userId: text('user_id')
@@ -78,7 +84,9 @@ export const accounts = sqliteTable(
 export const verifications = sqliteTable(
   'verifications',
   {
-    id: text('id').$defaultFn(() => ulid()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
