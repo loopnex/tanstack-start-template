@@ -5,7 +5,10 @@ export const env = createEnv({
   server: {
     BETTER_AUTH_URL: z.url(),
     BETTER_AUTH_SECRET: z.string().min(1),
-    DATABASE_URL: z.string().min(1),
+    TURSO_DATABASE_URL: z.url(),
+    TURSO_AUTH_TOKEN: z.string().min(1),
+    EMAIL_FROM: z.email(),
+    EMAIL_DISPLAY_NAME: z.string().min(1),
   },
 
   /**

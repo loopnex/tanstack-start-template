@@ -11,8 +11,11 @@
   "css.lint.unknownAtRules": "ignore",
   "cSpell.words": [
     "fontsource",
+    "libsql",
     "lightningcss",
+    "Loopnex",
     "subsecond",
+    "TURSO",
     "unixepoch",
     "usehooks"
   ]

@@ -6,14 +6,15 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from 'lucide-react'
-import { Toaster as Sonner, type ToasterProps } from 'sonner'
+import type { ToasterProps } from 'sonner'
+import { Toaster as Sonner } from 'sonner'
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme } = useTheme()
 
   return (
     <Sonner
-      theme={(theme ?? 'system') as ToasterProps['theme']}
+      theme={theme ?? 'system'}
       className="toaster group"
       position="bottom-center"
       richColors

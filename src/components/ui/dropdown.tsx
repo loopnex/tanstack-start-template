@@ -1,12 +1,9 @@
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  type MenuButtonProps,
-  type MenuItemProps,
-  type MenuItemsProps,
+import type {
+  MenuButtonProps,
+  MenuItemProps,
+  MenuItemsProps,
 } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 
 import { cn } from '#/lib/utils'
 

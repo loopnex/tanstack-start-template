@@ -21,7 +21,8 @@ import {
   InputGroupInput,
 } from '#/components/ui/input-group'
 import { signUp } from '#/lib/better-auth/auth-client'
-import { signUpSchema, type SignUpSchemaType } from '#/schema/authSchema'
+import type { SignUpSchemaType } from '#/schema/authSchema'
+import { signUpSchema } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { Building, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
