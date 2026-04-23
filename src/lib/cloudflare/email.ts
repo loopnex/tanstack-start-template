@@ -12,7 +12,7 @@ type SendEmailOptions = {
 export async function sendEmail({ to, subject, html, text }: SendEmailOptions) {
   return env.EMAIL.send({
     to,
-    from: `${serverEnv.EMAIL_DISPLAY_NAME} <${serverEnv.EMAIL_FROM}>`,
+    from: serverEnv.EMAIL_FROM,
     subject,
     html,
     text,
