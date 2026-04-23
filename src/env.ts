@@ -7,8 +7,7 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(1),
     TURSO_DATABASE_URL: z.url(),
     TURSO_AUTH_TOKEN: z.string().min(1),
-    EMAIL_FROM: z.email(),
-    EMAIL_DISPLAY_NAME: z.string().min(1),
+    EMAIL_FROM: z.string().min(1),
   },
 
   /**
