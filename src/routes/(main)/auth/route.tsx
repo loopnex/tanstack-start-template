@@ -1,7 +1,24 @@
 import NotFound from '#/components/system/not-found'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
+
+const authSearchSchema = z.object({
+  redirect: z.string().optional(),
+})
 
 export const Route = createFileRoute('/(main)/auth')({
+  validateSearch: authSearchSchema,
+  beforeLoad: async ({ context: { session }, search }) => {
+    if (session) {
+      const redirectTo =
+        search.redirect &&
+        search.redirect.startsWith('/') &&
+        !search.redirect.startsWith('/auth')
+          ? search.redirect
+          : '/dashboard'
+      throw redirect({ to: redirectTo })
+    }
+  },
   component: AuthLayout,
   notFoundComponent: () => {
     return (

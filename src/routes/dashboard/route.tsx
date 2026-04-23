@@ -12,9 +12,12 @@ export const Route = createFileRoute('/dashboard')({
       </div>
     )
   },
-  beforeLoad: async ({ context: { session } }) => {
+  beforeLoad: async ({ context: { session }, location }) => {
     if (!session) {
-      throw redirect({ to: '/auth/sign-in' })
+      throw redirect({
+        to: '/auth/sign-in',
+        search: { redirect: location.href },
+      })
     }
   },
   component: DashboardLayout,

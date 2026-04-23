@@ -53,7 +53,6 @@ function SignUpPage() {
           setFormError('')
         },
         onSuccess: () => {
-          router.invalidate()
           router.navigate({ to: '/dashboard' })
         },
         onError: (ctx) => setFormError(ctx.error.message),

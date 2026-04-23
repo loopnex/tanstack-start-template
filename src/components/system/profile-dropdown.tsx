@@ -23,7 +23,6 @@ const ProfileDropdown = ({ session }: { session: Session }) => {
       fetchOptions: {
         onSuccess: () => {
           toast.success('You are now logged out!')
-          router.invalidate()
           router.navigate({ to: '/auth/sign-in' })
         },
         onError: (ctx) => {
