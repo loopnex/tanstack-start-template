@@ -38,6 +38,31 @@ export const profileNameSchema = z.object({
 })
 export type ProfileNameSchemaType = z.infer<typeof profileNameSchema>
 
+// Request Password Reset Schema
+export const requestPasswordResetSchema = z.object({
+  email: z.email({
+    error: ({ input }) => {
+      if (!input) return 'Email is required'
+      return 'Invalid email'
+    },
+  }),
+})
+export type RequestPasswordResetSchemaType = z.infer<
+  typeof requestPasswordResetSchema
+>
+
+// Reset Password Schema
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().nonempty('Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
+export type ResetPasswordSchemaType = z.infer<typeof resetPasswordSchema>
+
 // Profile Email Schema
 export const profileEmailSchema = z.object({
   email: z.email({

@@ -20,45 +20,54 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '#/components/ui/input-group'
-import { signIn } from '#/lib/better-auth/auth-client'
-import type { SignInSchemaType } from '#/schema/authSchema'
-import { signInSchema } from '#/schema/authSchema'
+import { resetPassword } from '#/lib/better-auth/auth-client'
+import type { ResetPasswordSchemaType } from '#/schema/authSchema'
+import { resetPasswordSchema } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import * as z from 'zod'
 
-export const Route = createFileRoute('/(main)/auth/sign-in')({
-  component: SignInPage,
+export const Route = createFileRoute('/(main)/auth/reset-password')({
+  validateSearch: z.object({ token: z.string().optional() }),
+  component: ResetPasswordPage,
 })
 
-function SignInPage() {
+function ResetPasswordPage() {
   const [pendingAuth, setPendingAuth] = useState(false)
   const [formError, setFormError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const { token } = Route.useSearch()
   const router = useRouter()
 
   const form = useForm({
-    resolver: zodResolver(signInSchema),
-    defaultValues: { email: '', password: '' },
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: '', confirmPassword: '' },
   })
 
-  const onSubmit = async (values: SignInSchemaType) => {
-    await signIn.email(
-      { email: values.email, password: values.password },
+  const onSubmit = async (values: ResetPasswordSchemaType) => {
+    if (!token) {
+      setFormError('Invalid or missing token. Please request a new reset link.')
+      return
+    }
+
+    await resetPassword(
+      { newPassword: values.password, token },
       {
         onRequest: () => {
           setPendingAuth(true)
           setFormError('')
         },
         onSuccess: () => {
-          toast.success('Login successful!')
-          router.invalidate()
-          router.navigate({ to: '/dashboard' })
+          toast.success('Password reset successful')
+          router.navigate({ to: '/auth/sign-in' })
         },
-        onError: (ctx) => setFormError(ctx.error.message),
+        onError: (ctx: { error: { message: string } }) =>
+          setFormError(ctx.error.message),
       },
     )
     setPendingAuth(false)
@@ -67,9 +76,9 @@ function SignInPage() {
   return (
     <Card>
       <CardHeader className="items-center">
-        <CardTitle className="text-2xl">Sign In</CardTitle>
+        <CardTitle className="text-2xl">Reset Password</CardTitle>
         <CardDescription className="text-center">
-          Enter your account details to login
+          Enter your new password below
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -77,35 +86,11 @@ function SignInPage() {
           <FieldSet disabled={pendingAuth}>
             <FieldGroup>
               <Controller
-                name="email"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field>
-                    <FieldLabel htmlFor="email">Email</FieldLabel>
-                    <InputGroup>
-                      <InputGroupAddon>
-                        <Mail />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        id="email"
-                        type="email"
-                        autoComplete="email"
-                        placeholder="john@example.com"
-                        aria-invalid={fieldState.invalid}
-                        {...field}
-                      />
-                    </InputGroup>
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-
-              <Controller
                 name="password"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <FieldLabel htmlFor="password">New Password</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
                         <Lock />
@@ -113,8 +98,8 @@ function SignInPage() {
                       <InputGroupInput
                         id="password"
                         type={showPassword ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        placeholder="Password"
+                        autoComplete="new-password"
+                        placeholder="New password"
                         aria-invalid={fieldState.invalid}
                         {...field}
                       />
@@ -132,36 +117,48 @@ function SignInPage() {
                 )}
               />
 
-              {/* Forgot Password Link */}
-              <div className="flex justify-end">
-                <Link
-                  to="/auth/request-password-reset"
-                  className="text-sm underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-hidden"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <Controller
+                name="confirmPassword"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel htmlFor="confirmPassword">
+                      Confirm Password
+                    </FieldLabel>
+                    <InputGroup>
+                      <InputGroupAddon>
+                        <Lock />
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        id="confirmPassword"
+                        type={showConfirm ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Confirm new password"
+                        aria-invalid={fieldState.invalid}
+                        {...field}
+                      />
+                      <InputGroupButton
+                        onClick={() => setShowConfirm((p) => !p)}
+                        aria-label={
+                          showConfirm ? 'Hide password' : 'Show password'
+                        }
+                      >
+                        {showConfirm ? <Eye /> : <EyeOff />}
+                      </InputGroupButton>
+                    </InputGroup>
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
 
               <FormError message={formError} />
 
               <Button type="submit" className="w-full" isLoading={pendingAuth}>
-                Sign In
+                Reset Password
               </Button>
             </FieldGroup>
           </FieldSet>
         </form>
-
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-1 text-center text-sm">
-          <span className="text-muted-foreground">
-            Don&apos;t have an account?
-          </span>
-          <Link
-            to="/auth/sign-up"
-            className="underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-hidden"
-          >
-            Sign Up
-          </Link>
-        </div>
       </CardContent>
     </Card>
   )

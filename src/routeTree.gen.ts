@@ -18,6 +18,8 @@ import { Route as mainAuthRouteRouteImport } from './routes/(main)/auth/route'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as mainAuthSignUpRouteImport } from './routes/(main)/auth/sign-up'
 import { Route as mainAuthSignInRouteImport } from './routes/(main)/auth/sign-in'
+import { Route as mainAuthResetPasswordRouteImport } from './routes/(main)/auth/reset-password'
+import { Route as mainAuthRequestPasswordResetRouteImport } from './routes/(main)/auth/request-password-reset'
 
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
@@ -63,6 +65,17 @@ const mainAuthSignInRoute = mainAuthSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => mainAuthRouteRoute,
 } as any)
+const mainAuthResetPasswordRoute = mainAuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => mainAuthRouteRoute,
+} as any)
+const mainAuthRequestPasswordResetRoute =
+  mainAuthRequestPasswordResetRouteImport.update({
+    id: '/request-password-reset',
+    path: '/request-password-reset',
+    getParentRoute: () => mainAuthRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
@@ -70,6 +83,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof mainIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
+  '/auth/reset-password': typeof mainAuthResetPasswordRoute
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -79,6 +94,8 @@ export interface FileRoutesByTo {
   '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof mainIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
+  '/auth/reset-password': typeof mainAuthResetPasswordRoute
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -91,6 +108,8 @@ export interface FileRoutesById {
   '/dashboard/profile': typeof DashboardProfileRoute
   '/(main)/': typeof mainIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/(main)/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
+  '/(main)/auth/reset-password': typeof mainAuthResetPasswordRoute
   '/(main)/auth/sign-in': typeof mainAuthSignInRoute
   '/(main)/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -103,6 +122,8 @@ export interface FileRouteTypes {
     | '/dashboard/profile'
     | '/'
     | '/dashboard/'
+    | '/auth/request-password-reset'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
@@ -112,6 +133,8 @@ export interface FileRouteTypes {
     | '/dashboard/profile'
     | '/'
     | '/dashboard'
+    | '/auth/request-password-reset'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
@@ -123,6 +146,8 @@ export interface FileRouteTypes {
     | '/dashboard/profile'
     | '/(main)/'
     | '/dashboard/'
+    | '/(main)/auth/request-password-reset'
+    | '/(main)/auth/reset-password'
     | '/(main)/auth/sign-in'
     | '/(main)/auth/sign-up'
     | '/api/auth/$'
@@ -199,15 +224,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainAuthSignInRouteImport
       parentRoute: typeof mainAuthRouteRoute
     }
+    '/(main)/auth/reset-password': {
+      id: '/(main)/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof mainAuthResetPasswordRouteImport
+      parentRoute: typeof mainAuthRouteRoute
+    }
+    '/(main)/auth/request-password-reset': {
+      id: '/(main)/auth/request-password-reset'
+      path: '/request-password-reset'
+      fullPath: '/auth/request-password-reset'
+      preLoaderRoute: typeof mainAuthRequestPasswordResetRouteImport
+      parentRoute: typeof mainAuthRouteRoute
+    }
   }
 }
 
 interface mainAuthRouteRouteChildren {
+  mainAuthRequestPasswordResetRoute: typeof mainAuthRequestPasswordResetRoute
+  mainAuthResetPasswordRoute: typeof mainAuthResetPasswordRoute
   mainAuthSignInRoute: typeof mainAuthSignInRoute
   mainAuthSignUpRoute: typeof mainAuthSignUpRoute
 }
 
 const mainAuthRouteRouteChildren: mainAuthRouteRouteChildren = {
+  mainAuthRequestPasswordResetRoute: mainAuthRequestPasswordResetRoute,
+  mainAuthResetPasswordRoute: mainAuthResetPasswordRoute,
   mainAuthSignInRoute: mainAuthSignInRoute,
   mainAuthSignUpRoute: mainAuthSignUpRoute,
 }

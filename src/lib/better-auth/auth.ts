@@ -35,6 +35,10 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    sendResetPassword: async ({ user, url }) => {
+      const { sendPasswordResetEmail } = await emails()
+      await sendPasswordResetEmail(user.email, url)
+    },
   },
   plugins: [admin(), tanstackStartCookies()],
 })

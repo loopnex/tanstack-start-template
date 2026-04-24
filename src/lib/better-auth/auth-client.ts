@@ -8,6 +8,8 @@ export const {
   updateUser,
   changeEmail,
   changePassword,
+  requestPasswordReset,
+  resetPassword,
 } = createAuthClient({
   plugins: [adminClient()],
 })
