@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tanstack-start-template",
-  "compatibility_date": "2026-04-23",
+  "compatibility_date": "2026-05-31",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
   "observability": {
@@ -10,7 +10,12 @@
   "send_email": [
     {
       "name": "EMAIL",
-      "remote": true,
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "STARTER_BUCKET",
+      "bucket_name": "tanstack-start-template-bucket",
     },
   ],
 }

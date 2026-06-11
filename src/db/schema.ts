@@ -95,9 +95,43 @@ export const verifications = sqliteTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 )
 
+// Media — polymorphic file attachments (Spatie-style). model_type/model_id are
+// nullable to support pre-uploads before the parent record exists.
+export const media = sqliteTable(
+  'media',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
+    modelType: text('model_type'),
+    modelId: text('model_id'),
+    userId: text('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    ext: text('ext').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    collection: text('collection').notNull().default('default'),
+    url: text('url').notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('media_model_idx').on(table.modelType, table.modelId),
+    index('media_collection_idx').on(
+      table.modelType,
+      table.modelId,
+      table.collection,
+    ),
+    index('media_userId_idx').on(table.userId),
+  ],
+)
+
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
+  media: many(media),
 }))
 
 export const sessionRelations = relations(sessions, ({ one }) => ({
@@ -110,6 +144,13 @@ export const sessionRelations = relations(sessions, ({ one }) => ({
 export const accountRelations = relations(accounts, ({ one }) => ({
   user: one(users, {
     fields: [accounts.userId],
+    references: [users.id],
+  }),
+}))
+
+export const mediaRelations = relations(media, ({ one }) => ({
+  user: one(users, {
+    fields: [media.userId],
     references: [users.id],
   }),
 }))

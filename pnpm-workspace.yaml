@@ -1,0 +1,22 @@
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  lightningcss: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@better-auth/core@1.6.14'
+  - '@better-auth/drizzle-adapter@1.6.14'
+  - '@better-auth/kysely-adapter@1.6.14'
+  - '@better-auth/memory-adapter@1.6.14'
+  - '@better-auth/mongo-adapter@1.6.14'
+  - '@better-auth/prisma-adapter@1.6.14'
+  - '@better-auth/telemetry@1.6.14'
+  - '@cloudflare/vite-plugin@1.39.2'
+  - '@tanstack/router-core@1.171.9'
+  - '@tanstack/router-generator@1.167.13'
+  - '@tanstack/router-plugin@1.168.14'
+  - better-auth@1.6.14
+  - miniflare@4.20260601.0
+  - wrangler@4.97.0

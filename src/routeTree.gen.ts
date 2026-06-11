@@ -13,8 +13,10 @@ import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as mainRouteRouteImport } from './routes/(main)/route'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as mainIndexRouteImport } from './routes/(main)/index'
+import { Route as FilesSplatRouteImport } from './routes/files/$'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as mainAuthRouteRouteImport } from './routes/(main)/auth/route'
+import { Route as ApiUploadSplatRouteImport } from './routes/api/upload/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as mainAuthSignUpRouteImport } from './routes/(main)/auth/sign-up'
 import { Route as mainAuthSignInRouteImport } from './routes/(main)/auth/sign-in'
@@ -40,6 +42,11 @@ const mainIndexRoute = mainIndexRouteImport.update({
   path: '/',
   getParentRoute: () => mainRouteRoute,
 } as any)
+const FilesSplatRoute = FilesSplatRouteImport.update({
+  id: '/files/$',
+  path: '/files/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -49,6 +56,11 @@ const mainAuthRouteRoute = mainAuthRouteRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => mainRouteRoute,
+} as any)
+const ApiUploadSplatRoute = ApiUploadSplatRouteImport.update({
+  id: '/api/upload/$',
+  path: '/api/upload/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -81,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/auth': typeof mainAuthRouteRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/files/$': typeof FilesSplatRoute
   '/': typeof mainIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
@@ -88,10 +101,12 @@ export interface FileRoutesByFullPath {
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof mainAuthRouteRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/files/$': typeof FilesSplatRoute
   '/': typeof mainIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
@@ -99,6 +114,7 @@ export interface FileRoutesByTo {
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,6 +122,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/(main)/auth': typeof mainAuthRouteRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/files/$': typeof FilesSplatRoute
   '/(main)/': typeof mainIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(main)/auth/request-password-reset': typeof mainAuthRequestPasswordResetRoute
@@ -113,6 +130,7 @@ export interface FileRoutesById {
   '/(main)/auth/sign-in': typeof mainAuthSignInRoute
   '/(main)/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/upload/$': typeof ApiUploadSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,6 +138,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/auth'
     | '/dashboard/profile'
+    | '/files/$'
     | '/'
     | '/dashboard/'
     | '/auth/request-password-reset'
@@ -127,10 +146,12 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
+    | '/api/upload/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/dashboard/profile'
+    | '/files/$'
     | '/'
     | '/dashboard'
     | '/auth/request-password-reset'
@@ -138,12 +159,14 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
+    | '/api/upload/$'
   id:
     | '__root__'
     | '/(main)'
     | '/dashboard'
     | '/(main)/auth'
     | '/dashboard/profile'
+    | '/files/$'
     | '/(main)/'
     | '/dashboard/'
     | '/(main)/auth/request-password-reset'
@@ -151,12 +174,15 @@ export interface FileRouteTypes {
     | '/(main)/auth/sign-in'
     | '/(main)/auth/sign-up'
     | '/api/auth/$'
+    | '/api/upload/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   mainRouteRoute: typeof mainRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  FilesSplatRoute: typeof FilesSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiUploadSplatRoute: typeof ApiUploadSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -189,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainIndexRouteImport
       parentRoute: typeof mainRouteRoute
     }
+    '/files/$': {
+      id: '/files/$'
+      path: '/files/$'
+      fullPath: '/files/$'
+      preLoaderRoute: typeof FilesSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/profile': {
       id: '/dashboard/profile'
       path: '/profile'
@@ -202,6 +235,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof mainAuthRouteRouteImport
       parentRoute: typeof mainRouteRoute
+    }
+    '/api/upload/$': {
+      id: '/api/upload/$'
+      path: '/api/upload/$'
+      fullPath: '/api/upload/$'
+      preLoaderRoute: typeof ApiUploadSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -290,7 +330,9 @@ const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   mainRouteRoute: mainRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
+  FilesSplatRoute: FilesSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiUploadSplatRoute: ApiUploadSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
