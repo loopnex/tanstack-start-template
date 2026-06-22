@@ -3,6 +3,7 @@
 @import 'tw-animate-css';
 
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant sidebar-collapsed ([data-sidebar-state="collapsed"] &);
 
 @utility container {
   margin-inline: auto;
@@ -91,8 +92,4 @@
 
 .icon {
   @apply size-5.5 stroke-[1.5];
-}
-
-.sidebar-collapsed [data-sidebar] {
-  margin-left: -16rem; /* -ml-64 */
 }

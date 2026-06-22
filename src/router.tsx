@@ -1,6 +1,7 @@
 import { getContext } from '#/lib/tanstack-query/root-provider'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import Error from './components/system/error'
 import NotFound from './components/system/not-found'
 import { routeTree } from './routeTree.gen'
 
@@ -17,6 +18,13 @@ export function getRouter() {
       return (
         <div className="grid min-h-svh place-items-center">
           <NotFound />
+        </div>
+      )
+    },
+    defaultErrorComponent: (props) => {
+      return (
+        <div className="grid min-h-svh place-items-center">
+          <Error {...props} />
         </div>
       )
     },

@@ -24,7 +24,7 @@ export default function ThemeToggle() {
       size="icon"
       variant="secondary"
     >
-      {theme === null ? null : theme === 'light' ? (
+      {theme === 'light' ? (
         <Moon />
       ) : theme === 'dark' ? (
         <Sun />

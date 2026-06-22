@@ -1,45 +1,46 @@
-import { relations, sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { relations } from 'drizzle-orm'
+import {
+  bigint,
+  boolean,
+  index,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core'
 import { ulid } from 'ulid'
 
-// Shared timestamp columns for createdAt and updatedAt
-const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`
 const timestamps = {
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .default(nowMs)
-    .notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .default(nowMs)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 }
 
 // Users
-export const users = sqliteTable('users', {
+export const users = pgTable('users', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => ulid()),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  emailVerified: integer('email_verified', { mode: 'boolean' })
-    .default(false)
-    .notNull(),
+  emailVerified: boolean('email_verified').default(false).notNull(),
   role: text('role'),
-  banned: integer('banned', { mode: 'boolean' }).default(false),
+  banned: boolean('banned').default(false),
   banReason: text('ban_reason'),
-  banExpires: integer('ban_expires', { mode: 'timestamp_ms' }),
+  banExpires: timestamp('ban_expires'),
   image: text('image'),
   ...timestamps,
 })
 
 // Sessions
-export const sessions = sqliteTable(
+export const sessions = pgTable(
   'sessions',
   {
     id: text('id')
       .primaryKey()
       .$defaultFn(() => ulid()),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
     token: text('token').notNull().unique(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
@@ -53,7 +54,7 @@ export const sessions = sqliteTable(
 )
 
 // Accounts
-export const accounts = sqliteTable(
+export const accounts = pgTable(
   'accounts',
   {
     id: text('id')
@@ -67,12 +68,8 @@ export const accounts = sqliteTable(
     accessToken: text('access_token'),
     refreshToken: text('refresh_token'),
     idToken: text('id_token'),
-    accessTokenExpiresAt: integer('access_token_expires_at', {
-      mode: 'timestamp_ms',
-    }),
-    refreshTokenExpiresAt: integer('refresh_token_expires_at', {
-      mode: 'timestamp_ms',
-    }),
+    accessTokenExpiresAt: timestamp('access_token_expires_at'),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
     scope: text('scope'),
     password: text('password'),
     ...timestamps,
@@ -81,7 +78,7 @@ export const accounts = sqliteTable(
 )
 
 // Verifications
-export const verifications = sqliteTable(
+export const verifications = pgTable(
   'verifications',
   {
     id: text('id')
@@ -89,15 +86,15 @@ export const verifications = sqliteTable(
       .$defaultFn(() => ulid()),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
-    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
     ...timestamps,
   },
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 )
 
-// Media — polymorphic file attachments (Spatie-style). model_type/model_id are
+// Media — polymorphic file attachments, model_type/model_id
 // nullable to support pre-uploads before the parent record exists.
-export const media = sqliteTable(
+export const media = pgTable(
   'media',
   {
     id: text('id')
@@ -112,7 +109,7 @@ export const media = sqliteTable(
     name: text('name').notNull(),
     ext: text('ext').notNull(),
     mimeType: text('mime_type').notNull(),
-    size: integer('size').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(),
     collection: text('collection').notNull().default('default'),
     url: text('url').notNull(),
     ...timestamps,

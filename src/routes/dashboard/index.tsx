@@ -5,5 +5,5 @@ export const Route = createFileRoute('/dashboard/')({
 })
 
 function DashboardIndexPage() {
-  return <h1>Dashboard Overview Page</h1>
+  return <h1 className="text-xl font-semibold">Dashboard Overview</h1>
 }

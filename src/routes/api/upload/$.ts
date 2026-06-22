@@ -1,25 +1,31 @@
-import { db } from '#/db'
 import { media } from '#/db/schema'
 import { auth } from '#/lib/better-auth/auth'
+import { db } from '#/lib/db'
 import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
   deleteObject,
-  putObject,
-  uploadPart,
+  headObject,
+  signParts,
+  signPut,
   type UploadedPart,
-} from '#/lib/cloudflare/r2'
+} from '#/lib/media/s3'
 import slugify from '@sindresorhus/slugify'
 import { createFileRoute } from '@tanstack/react-router'
 import { eq } from 'drizzle-orm'
 import path from 'node:path'
 import { ulid } from 'ulid'
 
+// ≤ threshold → one presigned PUT; above → multipart.
+const MULTIPART_THRESHOLD = 100 * 1024 * 1024
+const TARGET_PART_SIZE = 10 * 1024 * 1024 // ≥ S3's 5 MiB part minimum
+const MAX_PARTS = 10_000 // S3 hard limit on parts per multipart upload
+
 const COLLECTION_RE = /^[a-z0-9-]+$/
 const json = (data: unknown, status = 200) => Response.json(data, { status })
 
-// The action is the last path segment, e.g. /api/upload/create.
+// The action is the last path segment, e.g. /api/upload/sign.
 const action = (url: URL) => url.pathname.split('/').filter(Boolean).pop() ?? ''
 
 // {collection}/{slug}-{ulid}.{ext} — client input is never used raw as a path.
@@ -67,96 +73,91 @@ async function record(args: {
   }
 }
 
-// Small files: stream the whole body to R2 in one request, then record it.
-async function uploadSingle(request: Request, url: URL, userId: string) {
-  if (!request.body) return json({ error: 'empty body' }, 400)
-  const filename = url.searchParams.get('filename') ?? 'file'
-  const collection = url.searchParams.get('collection') || 'default'
-  if (!COLLECTION_RE.test(collection))
-    return json({ error: 'invalid collection' }, 400)
-
-  const mimeType =
-    request.headers.get('content-type') || 'application/octet-stream'
-  const key = buildKey(filename, collection)
-  const { size } = await putObject(key, request.body, mimeType)
-  return json(
-    await record({
-      key,
-      name: filename,
-      mimeType,
-      size,
-      collection,
-      modelType: url.searchParams.get('modelType'),
-      modelId: url.searchParams.get('modelId'),
-      userId,
-      origin: url.origin,
-    }),
-  )
-}
-
-// Multipart: begin an upload and return the key + uploadId.
-async function mpuCreate(request: Request) {
+// Hand back presigned URL(s) so the browser uploads bytes directly to S3.
+async function sign(request: Request) {
   const body = (await request.json()) as {
     filename?: string
     collection?: string
     contentType?: string
+    size?: number
   }
   const collection = body.collection || 'default'
   if (!body.filename) return json({ error: 'filename required' }, 400)
   if (!COLLECTION_RE.test(collection))
     return json({ error: 'invalid collection' }, 400)
+  if (typeof body.size !== 'number' || body.size < 0)
+    return json({ error: 'invalid size' }, 400)
 
   const key = buildKey(body.filename, collection)
-  return json(
-    await createMultipartUpload(
-      key,
-      body.contentType || 'application/octet-stream',
-    ),
-  )
+  const contentType = body.contentType || 'application/octet-stream'
+
+  if (body.size <= MULTIPART_THRESHOLD) {
+    return json({ mode: 'single', key, url: await signPut(key, contentType) })
+  }
+
+  const { uploadId } = await createMultipartUpload(key, contentType)
+  // Scale the part size up for very large files so we never exceed MAX_PARTS.
+  const partSize = Math.max(TARGET_PART_SIZE, Math.ceil(body.size / MAX_PARTS))
+  const partCount = Math.ceil(body.size / partSize)
+  return json({ mode: 'multipart', key, uploadId, partSize, partCount })
 }
 
-// Multipart: upload one raw part.
-async function mpuPart(request: Request, url: URL) {
-  const key = url.searchParams.get('key')
-  const uploadId = url.searchParams.get('uploadId')
-  const partNumber = Number(url.searchParams.get('partNumber'))
-  if (!key || !uploadId) return json({ error: 'key/uploadId required' }, 400)
-  if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10_000)
-    return json({ error: 'invalid partNumber' }, 400)
-  if (!request.body) return json({ error: 'empty body' }, 400)
-  return json(
-    await uploadPart(key, uploadId, partNumber, await request.arrayBuffer()),
+// Sign a batch of part URLs on demand, requested as the client reaches them.
+async function signPartUrls(request: Request) {
+  const body = (await request.json()) as {
+    key?: string
+    uploadId?: string
+    partNumbers?: number[]
+  }
+  if (!body.key || !body.uploadId)
+    return json({ error: 'key/uploadId required' }, 400)
+  if (!COLLECTION_RE.test(body.key.split('/')[0]))
+    return json({ error: 'invalid key' }, 400)
+  if (!Array.isArray(body.partNumbers) || body.partNumbers.length === 0)
+    return json({ error: 'partNumbers required' }, 400)
+  if (
+    body.partNumbers.some((n) => !Number.isInteger(n) || n < 1 || n > MAX_PARTS)
   )
+    return json({ error: 'invalid partNumbers' }, 400)
+
+  return json({
+    parts: await signParts(body.key, body.uploadId, body.partNumbers),
+  })
 }
 
-// Multipart: assemble the parts, then record the row.
-async function mpuComplete(request: Request, url: URL, userId: string) {
+/**
+ * Finalize: complete the MPU (if any), then record the row using the authoritative size/type from storage rather than client-claimed values.
+ */
+async function complete(request: Request, url: URL, userId: string) {
   const body = (await request.json()) as {
     key?: string
     uploadId?: string
     parts?: UploadedPart[]
     filename?: string
-    collection?: string
     modelType?: string
     modelId?: string
-    mimeType?: string
-    size?: number
   }
-  if (!body.key || !body.uploadId)
-    return json({ error: 'key/uploadId required' }, 400)
-  if (!Array.isArray(body.parts) || body.parts.length === 0)
-    return json({ error: 'parts required' }, 400)
-  if (typeof body.size !== 'number' || body.size < 0)
-    return json({ error: 'invalid size' }, 400)
+  if (!body.key) return json({ error: 'key required' }, 400)
 
-  await completeMultipartUpload(body.key, body.uploadId, body.parts)
+  // Derive the collection from the key's prefix rather than trusting the client.
+  const collection = body.key.split('/')[0]
+  if (!COLLECTION_RE.test(collection))
+    return json({ error: 'invalid key' }, 400)
+
+  if (body.uploadId) {
+    if (!Array.isArray(body.parts) || body.parts.length === 0)
+      return json({ error: 'parts required' }, 400)
+    await completeMultipartUpload(body.key, body.uploadId, body.parts)
+  }
+
+  const { size, contentType } = await headObject(body.key)
   return json(
     await record({
       key: body.key,
       name: body.filename ?? 'file',
-      mimeType: body.mimeType || 'application/octet-stream',
-      size: body.size,
-      collection: body.collection || 'default',
+      mimeType: contentType,
+      size,
+      collection,
       modelType: body.modelType ?? null,
       modelId: body.modelId ?? null,
       userId,
@@ -166,7 +167,7 @@ async function mpuComplete(request: Request, url: URL, userId: string) {
 }
 
 // Multipart: discard an in-progress upload.
-async function mpuAbort(url: URL) {
+async function abort(url: URL) {
   const key = url.searchParams.get('key')
   const uploadId = url.searchParams.get('uploadId')
   if (!key || !uploadId) return json({ error: 'key/uploadId required' }, 400)
@@ -190,29 +191,28 @@ async function authed(
 ) {
   const session = await auth.api.getSession({ headers: request.headers })
   if (!session) return json({ error: 'Unauthorized' }, 401)
-  return run(session.user.id, new URL(request.url))
+  try {
+    return await run(session.user.id, new URL(request.url))
+  } catch (err) {
+    // Unexpected failures (S3 errors, etc.)
+    console.error('[upload]', err)
+    return json({ error: 'Upload request failed' }, 500)
+  }
 }
 
 export const Route = createFileRoute('/api/upload/$')({
   server: {
     handlers: {
-      PUT: ({ request }) =>
-        authed(request, (userId, url) => {
-          if (action(url) === 'single')
-            return uploadSingle(request, url, userId)
-          if (action(url) === 'part') return mpuPart(request, url)
-          return json({ error: 'unknown action' }, 404)
-        }),
       POST: ({ request }) =>
         authed(request, (userId, url) => {
-          if (action(url) === 'create') return mpuCreate(request)
-          if (action(url) === 'complete')
-            return mpuComplete(request, url, userId)
+          if (action(url) === 'sign') return sign(request)
+          if (action(url) === 'sign-parts') return signPartUrls(request)
+          if (action(url) === 'complete') return complete(request, url, userId)
           return json({ error: 'unknown action' }, 404)
         }),
       DELETE: ({ request }) =>
         authed(request, (_userId, url) => {
-          if (action(url) === 'abort') return mpuAbort(url)
+          if (action(url) === 'abort') return abort(url)
           if (action(url) === 'delete') return remove(url)
           return json({ error: 'unknown action' }, 404)
         }),

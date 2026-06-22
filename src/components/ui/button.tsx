@@ -5,7 +5,7 @@ import { LoaderCircle } from 'lucide-react'
 import { cn } from '#/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent text-sm font-medium whitespace-nowrap ring-offset-background transition-[color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-70 [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]',
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md border-2 border-transparent text-sm font-medium whitespace-nowrap ring-offset-background transition-[color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-70 [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]',
   {
     variants: {
       variant: {
@@ -27,12 +27,12 @@ const buttonVariants = cva(
           'bg-warning text-warning-foreground hover:bg-warning/85 focus-visible:ring-warning/30',
       },
       size: {
-        default: 'h-9 px-3.5 py-2',
-        sm: 'h-8 gap-1.5 px-3 [&_svg]:size-4',
-        lg: 'h-10 px-6',
-        icon: 'size-9',
-        'icon-sm': 'size-8 [&_svg]:size-4',
-        'icon-lg': 'size-10',
+        default: 'h-10 px-3.5 py-2',
+        sm: 'h-9 gap-1.5 px-3 [&_svg]:size-4',
+        lg: 'h-11 px-6',
+        icon: 'size-10',
+        'icon-sm': 'size-9 [&_svg]:size-4',
+        'icon-lg': 'size-11',
       },
     },
     defaultVariants: {

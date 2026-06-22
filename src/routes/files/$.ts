@@ -1,6 +1,6 @@
-import { db } from '#/db'
+import { db } from '#/lib/db'
 import { media } from '#/db/schema'
-import { getObject } from '#/lib/cloudflare/r2'
+import { getObject } from '#/lib/media/s3'
 import { createFileRoute } from '@tanstack/react-router'
 import { eq } from 'drizzle-orm'
 
@@ -10,8 +10,13 @@ async function serve(request: Request) {
   const key = decodeURIComponent(url.pathname.replace(/^\/files\//, ''))
   if (!key) return new Response('Not Found', { status: 404 })
 
-  const obj = await getObject(key)
-  if (!obj) return new Response('Not Found', { status: 404 })
+  let obj
+  try {
+    obj = await getObject(key)
+  } catch {
+    return new Response('Not Found', { status: 404 })
+  }
+  if (!obj.Body) return new Response('Not Found', { status: 404 })
 
   // Original filename for the download dialog; falls back to the key tail.
   const [row] = await db.select().from(media).where(eq(media.key, key)).limit(1)
@@ -21,11 +26,13 @@ async function serve(request: Request) {
   )
 
   const headers = new Headers()
-  obj.writeHttpMetadata(headers) // Content-Type etc. from stored metadata
-  headers.set('etag', obj.httpEtag)
+  headers.set('content-type', obj.ContentType ?? 'application/octet-stream')
+  if (obj.ContentLength != null)
+    headers.set('content-length', String(obj.ContentLength))
+  if (obj.ETag) headers.set('etag', obj.ETag)
   headers.set('cache-control', 'public, max-age=31536000, immutable')
   headers.set('content-disposition', `inline; filename="${filename}"`)
-  return new Response(obj.body, { headers })
+  return new Response(obj.Body.transformToWebStream(), { headers })
 }
 
 export const Route = createFileRoute('/files/$')({

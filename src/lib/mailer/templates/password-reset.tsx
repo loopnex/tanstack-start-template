@@ -11,6 +11,7 @@ import {
   Section,
   Text,
 } from 'react-email'
+import { BRAND_NAME } from '../config'
 
 interface PasswordResetEmailProps {
   resetUrl: string
@@ -31,7 +32,7 @@ const PasswordResetEmailTemplate = ({ resetUrl }: PasswordResetEmailProps) => {
           fontStyle="normal"
         />
       </Head>
-      <Preview>Reset your Loopnex password</Preview>
+      <Preview>Reset your {BRAND_NAME} password</Preview>
       <Body
         style={{
           backgroundColor: '#f5f5f5',
@@ -61,7 +62,7 @@ const PasswordResetEmailTemplate = ({ resetUrl }: PasswordResetEmailProps) => {
                 textTransform: 'uppercase',
               }}
             >
-              Loopnex
+              {BRAND_NAME}
             </Text>
           </Section>
 
@@ -93,8 +94,8 @@ const PasswordResetEmailTemplate = ({ resetUrl }: PasswordResetEmailProps) => {
                 color: '#636363',
               }}
             >
-              We received a request to reset your Loopnex password. Click the
-              button below to choose a new password. This link expires in 1
+              We received a request to reset your {BRAND_NAME} password. Click
+              the button below to choose a new password. This link expires in 1
               hour.
             </Text>
 
@@ -141,7 +142,7 @@ const PasswordResetEmailTemplate = ({ resetUrl }: PasswordResetEmailProps) => {
             }}
           >
             <Text style={{ margin: 0, fontSize: '11px', color: '#a3a3a3' }}>
-              {new Date().getFullYear()} Loopnex. All rights reserved.
+              {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
             </Text>
           </Section>
         </Container>

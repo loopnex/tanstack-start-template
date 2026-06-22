@@ -1,56 +1,61 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export type Theme = 'light' | 'dark' | 'system'
 
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') {
-    return 'system'
-  }
+/**
+ * Module-level store so every useTheme() caller shares one value and one OS-preference listener.
+ * The inline THEME_INIT_SCRIPT already applied the correct class before hydration, so we read the value here without re-applying.
+ */
+const listeners = new Set<() => void>()
+let theme: Theme = 'system'
+// Held in a module variable so the browser can't garbage-collect it and silently
+// stop firing the 'change' event.
+const darkQuery =
+  typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null
 
-  const stored = window.localStorage.getItem('theme')
-  if (stored === 'light' || stored === 'dark' || stored === 'system') {
-    return stored
-  }
-
-  return 'system'
+function read(): Theme {
+  const stored = localStorage.getItem('theme')
+  return stored === 'light' || stored === 'dark' || stored === 'system'
+    ? stored
+    : 'system'
 }
 
-function applyTheme(theme: Theme) {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme
-
-  document.documentElement.classList.remove('light', 'dark')
-  document.documentElement.classList.add(resolved)
-  document.documentElement.style.colorScheme = resolved
+function apply(next: Theme) {
+  const resolved =
+    next === 'system' ? (darkQuery?.matches ? 'dark' : 'light') : next
+  const root = document.documentElement
+  root.classList.remove('light', 'dark')
+  root.classList.add(resolved)
+  root.style.colorScheme = resolved
 }
 
-export function useTheme(): {
-  theme: Theme | null
-  setTheme: (theme: Theme) => void
-} {
-  const [theme, setThemeState] = useState<Theme | null>(null)
+if (darkQuery) {
+  theme = read()
+  // Re-resolve when the OS preference changes while in system mode.
+  darkQuery.addEventListener('change', () => {
+    if (theme === 'system') apply('system')
+  })
+}
 
-  useEffect(() => {
-    const initial = getInitialTheme()
-    setThemeState(initial)
-    applyTheme(initial)
-  }, [])
+function setTheme(next: Theme) {
+  theme = next
+  localStorage.setItem('theme', next)
+  apply(next)
+  listeners.forEach((notify) => notify())
+}
 
-  useEffect(() => {
-    if (theme !== 'auto') return
+function subscribe(notify: () => void) {
+  listeners.add(notify)
+  return () => listeners.delete(notify)
+}
 
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme('system')
-
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [theme])
-
-  function setTheme(next: Theme) {
-    setThemeState(next)
-    applyTheme(next)
-    window.localStorage.setItem('theme', next)
-  }
-
-  return { theme, setTheme }
+export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
+  const value = useSyncExternalStore(
+    subscribe,
+    () => theme,
+    () => 'system' as Theme,
+  )
+  return { theme: value, setTheme }
 }

@@ -1,13 +1,20 @@
 import type { UploadResult } from '#/components/system/file-uploader'
 
-// ≤ threshold → one streaming PUT; above → multipart. Keep ≤ the account's
-// Worker request-body limit (100 MB Free/Pro, 200 Business, 500 Enterprise).
-const MULTIPART_THRESHOLD = 90 * 1024 * 1024
-const PART_SIZE = 10 * 1024 * 1024 // ≥ R2's 5 MiB minimum
 const CONCURRENCY = 4
 const MAX_RETRIES = 3
+const SIGN_BATCH = 10 // part URLs requested per sign-parts call
 
 type Part = { partNumber: number; etag: string }
+
+type SignSingle = { mode: 'single'; key: string; url: string }
+type SignMultipart = {
+  mode: 'multipart'
+  key: string
+  uploadId: string
+  partSize: number
+  partCount: number
+}
+type SignResponse = SignSingle | SignMultipart
 
 export type UploadOptions = {
   collection?: string
@@ -17,46 +24,88 @@ export type UploadOptions = {
   onProgress?: (percent: number) => void
 }
 
-// Upload a file to /api/upload, picking single vs multipart by size.
-export function uploadFile(
+// Ask the server to sign the upload, then push bytes straight to S3.
+export async function uploadFile(
   file: File,
   opts: UploadOptions = {},
 ): Promise<UploadResult> {
-  return file.size > MULTIPART_THRESHOLD
-    ? uploadMultipart(file, opts)
-    : uploadSingle(file, opts)
+  const signed = (await postJson(
+    '/api/upload/sign',
+    {
+      filename: file.name,
+      collection: opts.collection,
+      contentType: file.type,
+      size: file.size,
+    },
+    opts.signal,
+  )) as SignResponse
+
+  return signed.mode === 'multipart'
+    ? uploadMultipart(file, opts, signed)
+    : uploadSingle(file, opts, signed)
 }
 
 async function uploadSingle(
   file: File,
   opts: UploadOptions,
+  signed: SignSingle,
 ): Promise<UploadResult> {
-  const result = await xhrPut(`/api/upload/single?${query(file, opts)}`, file, {
+  await xhrPut(signed.url, file, {
     signal: opts.signal,
-    contentType: file.type,
+    // Must match the Content-Type the server signed — same octet-stream fallback.
+    contentType: file.type || 'application/octet-stream',
     onLoaded: (loaded) => opts.onProgress?.(percent(loaded, file.size)),
   })
-  return result as UploadResult
+  return finalize(file, opts, { key: signed.key })
 }
 
 async function uploadMultipart(
   file: File,
   opts: UploadOptions,
+  signed: SignMultipart,
 ): Promise<UploadResult> {
   const { signal, onProgress } = opts
-  const { key, uploadId } = (await postJson(
-    '/api/upload/create',
-    {
-      filename: file.name,
-      collection: opts.collection,
-      contentType: file.type,
-    },
-    signal,
-  )) as { key: string; uploadId: string }
+  const { key, uploadId, partSize, partCount } = signed
+
+  /*
+  Sign part URLs in batches the first time each batch is reached. The fetch is cached per batch so concurrent workers share one request; a failure clears it so the batch can be retried.
+  */
+  const urls = new Map<number, string>()
+  const batches = new Map<number, Promise<void>>()
+  const urlFor = async (partNumber: number): Promise<string> => {
+    const cached = urls.get(partNumber)
+    if (cached) return cached
+    const batch = Math.floor((partNumber - 1) / SIGN_BATCH)
+    if (!batches.has(batch)) {
+      const from = batch * SIGN_BATCH + 1
+      const partNumbers = Array.from(
+        { length: Math.min(SIGN_BATCH, partCount - from + 1) },
+        (_, i) => from + i,
+      )
+      const fetching = withRetry(
+        () =>
+          postJson(
+            '/api/upload/sign-parts',
+            { key, uploadId, partNumbers },
+            signal,
+          ) as Promise<{ parts: { partNumber: number; url: string }[] }>,
+        signal,
+      )
+        .then((res) => {
+          for (const p of res.parts) urls.set(p.partNumber, p.url)
+        })
+        .catch((err) => {
+          batches.delete(batch)
+          throw err
+        })
+      batches.set(batch, fetching)
+    }
+    await batches.get(batch)!
+    return urls.get(partNumber)!
+  }
 
   try {
-    const total = Math.max(1, Math.ceil(file.size / PART_SIZE))
-    const loaded = new Array<number>(total).fill(0)
+    const loaded = new Array<number>(partCount).fill(0)
     const report = () =>
       onProgress?.(
         percent(
@@ -68,53 +117,36 @@ async function uploadMultipart(
     const parts: Part[] = []
     let next = 0
     const worker = async () => {
-      while (next < total) {
+      while (next < partCount) {
         const i = next++
-        const start = i * PART_SIZE
-        const chunk = file.slice(start, Math.min(start + PART_SIZE, file.size))
-        const part = (await withRetry(
-          () =>
-            xhrPut(
-              `/api/upload/part?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}&partNumber=${i + 1}`,
-              chunk,
-              {
-                signal,
-                onLoaded: (l) => {
-                  loaded[i] = l
-                  report()
-                },
+        const partNumber = i + 1
+        const start = i * partSize
+        const chunk = file.slice(start, Math.min(start + partSize, file.size))
+        const { etag } = await withRetry(
+          async () =>
+            xhrPut(await urlFor(partNumber), chunk, {
+              signal,
+              onLoaded: (l) => {
+                loaded[i] = l
+                report()
               },
-            ),
+            }),
           signal,
-        )) as Part
+        )
+        if (!etag) throw new Error('Missing ETag (check S3 CORS ExposeHeaders)')
         loaded[i] = chunk.size
         report()
-        parts.push(part)
+        parts.push({ partNumber, etag })
       }
     }
     await Promise.all(
-      Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
+      Array.from({ length: Math.min(CONCURRENCY, partCount) }, worker),
     )
     parts.sort((a, b) => a.partNumber - b.partNumber)
 
-    const result = (await postJson(
-      '/api/upload/complete',
-      {
-        key,
-        uploadId,
-        parts,
-        filename: file.name,
-        collection: opts.collection,
-        modelType: opts.modelType,
-        modelId: opts.modelId,
-        mimeType: file.type,
-        size: file.size,
-      },
-      signal,
-    )) as UploadResult
-    return result
+    return finalize(file, opts, { key, uploadId, parts })
   } catch (err) {
-    // Best-effort: tell R2 to discard the parts. keepalive survives navigation.
+    // Best-effort: tell S3 to discard the parts. keepalive survives navigation.
     void fetch(
       `/api/upload/abort?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}`,
       { method: 'DELETE', keepalive: true },
@@ -123,25 +155,34 @@ async function uploadMultipart(
   }
 }
 
-// --- helpers ---
-
-function query(file: File, opts: UploadOptions) {
-  const p = new URLSearchParams({
-    filename: file.name,
-    collection: opts.collection || 'default',
-  })
-  if (opts.modelType) p.set('modelType', opts.modelType)
-  if (opts.modelId) p.set('modelId', opts.modelId)
-  return p.toString()
+// Record the DB row; server reads the authoritative size/type from storage.
+function finalize(
+  file: File,
+  opts: UploadOptions,
+  extra: { key: string; uploadId?: string; parts?: Part[] },
+): Promise<UploadResult> {
+  return postJson(
+    '/api/upload/complete',
+    {
+      key: extra.key,
+      uploadId: extra.uploadId,
+      parts: extra.parts,
+      filename: file.name,
+      modelType: opts.modelType,
+      modelId: opts.modelId,
+    },
+    opts.signal,
+  ) as Promise<UploadResult>
 }
 
+// --- Helpers ---
 const percent = (loaded: number, total: number) =>
   total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0
 
 const aborted = () => new DOMException('Aborted', 'AbortError')
 const isAbort = (e: unknown) => (e as Error)?.name === 'AbortError'
 
-// PUT via XHR so we get real upload progress and signal-based abort.
+// PUT via XHR so we get real upload progress and signal-based abort. Resolves the response ETag (S3 returns it as a header; empty body) for multipart parts.
 function xhrPut(
   url: string,
   body: Blob,
@@ -150,12 +191,11 @@ function xhrPut(
     contentType?: string
     onLoaded?: (loaded: number) => void
   },
-): Promise<unknown> {
+): Promise<{ etag: string | null }> {
   return new Promise((resolve, reject) => {
     if (opts.signal?.aborted) return reject(aborted())
     const xhr = new XMLHttpRequest()
     xhr.open('PUT', url)
-    xhr.responseType = 'json'
     if (opts.contentType) xhr.setRequestHeader('content-type', opts.contentType)
 
     const onAbort = () => xhr.abort()
@@ -167,7 +207,8 @@ function xhrPut(
     }
     xhr.onload = () => {
       done()
-      if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response)
+      if (xhr.status >= 200 && xhr.status < 300)
+        resolve({ etag: xhr.getResponseHeader('ETag') })
       else reject(new Error(`Upload failed (${xhr.status})`))
     }
     xhr.onerror = () => {
@@ -193,7 +234,14 @@ async function postJson(
     body: JSON.stringify(body),
     signal,
   })
-  if (!res.ok) throw new Error(`${url} failed (${res.status})`)
+  if (!res.ok) {
+    // Use the server's { error } message; fall back to the HTTP status code.
+    const message = await res
+      .json()
+      .then((d) => (d as { error?: string })?.error)
+      .catch(() => null)
+    throw new Error(message || `Request failed (${res.status})`)
+  }
   return res.json()
 }
 

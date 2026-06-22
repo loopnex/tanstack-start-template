@@ -1,14 +1,13 @@
-import { db } from '#/db'
+import { db } from '#/lib/db'
+import { emailQueue } from '#/lib/queues/emailQueue'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { betterAuth } from 'better-auth/minimal'
 import { admin } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 
-const emails = () => import('#/lib/emails')
-
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'sqlite',
+    provider: 'pg',
     usePlural: true,
   }),
   advanced: {
@@ -20,8 +19,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          const { sendWelcomeEmail } = await emails()
-          await sendWelcomeEmail(user.email, user.name)
+          await emailQueue.add('welcome', { to: user.email, name: user.name })
         },
       },
     },
@@ -36,8 +34,7 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
-      const { sendPasswordResetEmail } = await emails()
-      await sendPasswordResetEmail(user.email, url)
+      await emailQueue.add('password-reset', { to: user.email, url })
     },
   },
   plugins: [admin(), tanstackStartCookies()],

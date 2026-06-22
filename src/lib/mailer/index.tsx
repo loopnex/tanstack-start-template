@@ -1,5 +1,5 @@
-import { sendEmail } from '#/lib/cloudflare/email'
 import { render, toPlainText } from 'react-email'
+import { BRAND_NAME, sendEmail } from './config'
 import PasswordResetEmailTemplate from './templates/password-reset'
 import WelcomeEmailTemplate from './templates/welcome'
 
@@ -9,7 +9,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
   const text = toPlainText(html)
   return sendEmail({
     to,
-    subject: 'Welcome to Loopnex',
+    subject: `Welcome to ${BRAND_NAME}`,
     html,
     text,
   })
@@ -21,7 +21,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   const text = toPlainText(html)
   return sendEmail({
     to,
-    subject: 'Reset your Loopnex password',
+    subject: `Reset your ${BRAND_NAME} password`,
     html,
     text,
   })

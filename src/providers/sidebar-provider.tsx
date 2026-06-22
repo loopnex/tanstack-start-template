@@ -15,19 +15,18 @@ export const SidebarContext = createContext<SidebarContextType | null>(null)
 
 function readSidebarStorage(): boolean {
   try {
-    const value = localStorage.getItem('sidebar-open')
+    const value = localStorage.getItem('sidebar')
     return value !== null ? value === 'true' : true
   } catch {
     return true
   }
 }
 
-function setSidebarHtmlClass(open: boolean) {
-  if (open) {
-    document.documentElement.classList.remove('sidebar-collapsed')
-  } else {
-    document.documentElement.classList.add('sidebar-collapsed')
-  }
+function setSidebarHtmlAttr(open: boolean) {
+  document.documentElement.setAttribute(
+    'data-sidebar-state',
+    open ? 'expanded' : 'collapsed',
+  )
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
@@ -42,9 +41,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   const setOpen = (value: boolean) => {
     setOpenState(value)
-    setSidebarHtmlClass(value)
+    setSidebarHtmlAttr(value)
     try {
-      localStorage.setItem('sidebar-open', String(value))
+      localStorage.setItem('sidebar', String(value))
     } catch {}
   }
 

@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from 'react-email'
+import { BRAND_NAME } from '../config'
 
 interface WelcomeEmailProps {
   name: string
@@ -30,7 +31,7 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
           fontStyle="normal"
         />
       </Head>
-      <Preview>Welcome to Loopnex. Your account is all set.</Preview>
+      <Preview>Welcome to {BRAND_NAME}. Your account is all set.</Preview>
       <Body
         style={{
           backgroundColor: '#f5f5f5',
@@ -60,7 +61,7 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
                 textTransform: 'uppercase',
               }}
             >
-              Loopnex
+              {BRAND_NAME}
             </Text>
           </Section>
 
@@ -92,8 +93,8 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
                 color: '#636363',
               }}
             >
-              We are thrilled to have you join Loopnex. Your account is fully
-              set up and ready to go.
+              We are thrilled to have you join {BRAND_NAME}. Your account is
+              fully set up and ready to go.
             </Text>
             <Text
               style={{
@@ -103,7 +104,7 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
                 color: '#636363',
               }}
             >
-              Start exploring everything Loopnex has to offer and enjoy a
+              Start exploring everything {BRAND_NAME} has to offer and enjoy a
               seamless workflow built for you.
             </Text>
 
@@ -119,7 +120,7 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
                 color: '#a3a3a3',
               }}
             >
-              If you did not create an account with Loopnex, you can safely
+              If you did not create an account with {BRAND_NAME}, you can safely
               ignore this email.
             </Text>
           </Section>
@@ -135,7 +136,7 @@ const WelcomeEmailTemplate = ({ name }: WelcomeEmailProps) => {
             }}
           >
             <Text style={{ margin: 0, fontSize: '11px', color: '#a3a3a3' }}>
-              {new Date().getFullYear()} Loopnex. All rights reserved.
+              {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
             </Text>
           </Section>
         </Container>

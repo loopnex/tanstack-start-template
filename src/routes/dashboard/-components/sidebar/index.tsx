@@ -32,9 +32,8 @@ const Sidebar = () => {
 
   return (
     <aside
-      data-sidebar
       suppressHydrationWarning
-      className="hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin] duration-300 md:flex"
+      className="hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin] duration-300 md:flex sidebar-collapsed:-ml-64"
     >
       <SidebarMenu />
     </aside>

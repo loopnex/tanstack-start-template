@@ -1,6 +1,6 @@
-import { db } from '#/db'
+import { db } from '#/lib/db'
 import { media } from '#/db/schema'
-import { deleteObject } from '#/lib/cloudflare/r2'
+import { deleteObject } from '#/lib/media/s3'
 import { and, eq, inArray } from 'drizzle-orm'
 
 export type Media = typeof media.$inferSelect
@@ -38,8 +38,7 @@ export async function deleteMedia(key: string): Promise<void> {
   await db.delete(media).where(eq(media.key, key))
 }
 
-// Delete all media for a model (optionally one collection). Call before
-// deleting the parent record to avoid orphaned objects.
+// Delete all media for a model (optionally one collection). Call before deleting the parent record to avoid orphaned objects.
 export async function deleteModelMedia(
   modelType: string,
   modelId: string,
