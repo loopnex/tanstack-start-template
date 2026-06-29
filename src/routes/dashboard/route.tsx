@@ -31,7 +31,7 @@ function DashboardLayout() {
         <div className="flex w-full flex-col overflow-hidden">
           <Header />
           <main className="grow overflow-y-auto bg-muted dark:bg-background">
-            <div className="container py-6">
+            <div className="container h-full py-6">
               <Outlet />
             </div>
           </main>
