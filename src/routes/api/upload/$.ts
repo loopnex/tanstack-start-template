@@ -1,5 +1,4 @@
 import { media } from '#/db/schema'
-import { auth } from '#/lib/better-auth/auth'
 import { db } from '#/lib/db'
 import {
   abortMultipartUpload,
@@ -7,6 +6,7 @@ import {
   createMultipartUpload,
   deleteObject,
   headObject,
+  objectPublicUrl,
   signParts,
   signPut,
   type UploadedPart,
@@ -22,18 +22,21 @@ const MULTIPART_THRESHOLD = 100 * 1024 * 1024
 const TARGET_PART_SIZE = 10 * 1024 * 1024 // ≥ S3's 5 MiB part minimum
 const MAX_PARTS = 10_000 // S3 hard limit on parts per multipart upload
 
+// Default ceiling; overridden per-upload by the <FileUploader maxSize> prop.
+const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100 MB
+
 const COLLECTION_RE = /^[a-z0-9-]+$/
 const json = (data: unknown, status = 200) => Response.json(data, { status })
 
 // The action is the last path segment, e.g. /api/upload/sign.
 const action = (url: URL) => url.pathname.split('/').filter(Boolean).pop() ?? ''
 
-// {collection}/{slug}-{ulid}.{ext} — client input is never used raw as a path.
+// {collection}/{slug}-{ulid} — extensionless so the dev static handler never
+// grabs the read URL; Content-Type is read back from the stored object. Client
+// input is never used raw as a path.
 function buildKey(filename: string, collection: string) {
-  const ext = path.extname(filename).slice(1).toLowerCase()
   const name = path.basename(filename, path.extname(filename))
-  const base = `${collection}/${slugify(name, { decamelize: false }) || 'file'}-${ulid()}`
-  return ext ? `${base}.${ext}` : base
+  return `${collection}/${slugify(name, { decamelize: false }) || 'file'}-${ulid()}`
 }
 
 // Insert the DB row once an object exists; returns the public result.
@@ -45,11 +48,12 @@ async function record(args: {
   collection: string
   modelType: string | null
   modelId: string | null
-  userId: string
-  origin: string
+  // Media isn't tied to a user — null unless an authorized caller passes one
+  userId: string | null
 }) {
   const mediaId = ulid()
-  const url = `${args.origin}/files/${args.key}`
+  // Browser-reachable storage URL (served directly from the bucket/CDN).
+  const url = objectPublicUrl(args.key)
   await db.insert(media).values({
     id: mediaId,
     modelType: args.modelType,
@@ -80,6 +84,7 @@ async function sign(request: Request) {
     collection?: string
     contentType?: string
     size?: number
+    maxSize?: number
   }
   const collection = body.collection || 'default'
   if (!body.filename) return json({ error: 'filename required' }, 400)
@@ -87,6 +92,8 @@ async function sign(request: Request) {
     return json({ error: 'invalid collection' }, 400)
   if (typeof body.size !== 'number' || body.size < 0)
     return json({ error: 'invalid size' }, 400)
+  if (body.size > (body.maxSize ?? DEFAULT_MAX_UPLOAD_SIZE))
+    return json({ error: 'File too large' }, 413)
 
   const key = buildKey(body.filename, collection)
   const contentType = body.contentType || 'application/octet-stream'
@@ -125,10 +132,9 @@ async function signPartUrls(request: Request) {
   })
 }
 
-/**
- * Finalize: complete the MPU (if any), then record the row using the authoritative size/type from storage rather than client-claimed values.
- */
-async function complete(request: Request, url: URL, userId: string) {
+// Complete the MPU (if any), then record the row using storage's authoritative
+// size/type, not the client's.
+async function complete(request: Request) {
   const body = (await request.json()) as {
     key?: string
     uploadId?: string
@@ -136,6 +142,7 @@ async function complete(request: Request, url: URL, userId: string) {
     filename?: string
     modelType?: string
     modelId?: string
+    maxSize?: number
   }
   if (!body.key) return json({ error: 'key required' }, 400)
 
@@ -150,7 +157,13 @@ async function complete(request: Request, url: URL, userId: string) {
     await completeMultipartUpload(body.key, body.uploadId, body.parts)
   }
 
+  // Authoritative size/type from storage — never trust the client's claims.
   const { size, contentType } = await headObject(body.key)
+  if (size > (body.maxSize ?? DEFAULT_MAX_UPLOAD_SIZE)) {
+    await deleteObject(body.key)
+    return json({ error: 'File too large' }, 413)
+  }
+
   return json(
     await record({
       key: body.key,
@@ -160,8 +173,8 @@ async function complete(request: Request, url: URL, userId: string) {
       collection,
       modelType: body.modelType ?? null,
       modelId: body.modelId ?? null,
-      userId,
-      origin: url.origin,
+      // No auth here. An authorized procedure can pass its own user id.
+      userId: null,
     }),
   )
 }
@@ -184,17 +197,14 @@ async function remove(url: URL) {
   return new Response(null, { status: 204 })
 }
 
-// Auth-gate every request, then hand the handler the user + parsed URL.
-async function authed(
+// Parse the URL, run the action, and turn unexpected failures into a 500.
+async function handle(
   request: Request,
-  run: (userId: string, url: URL) => Response | Promise<Response>,
+  run: (url: URL) => Response | Promise<Response>,
 ) {
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (!session) return json({ error: 'Unauthorized' }, 401)
   try {
-    return await run(session.user.id, new URL(request.url))
+    return await run(new URL(request.url))
   } catch (err) {
-    // Unexpected failures (S3 errors, etc.)
     console.error('[upload]', err)
     return json({ error: 'Upload request failed' }, 500)
   }
@@ -204,14 +214,14 @@ export const Route = createFileRoute('/api/upload/$')({
   server: {
     handlers: {
       POST: ({ request }) =>
-        authed(request, (userId, url) => {
+        handle(request, (url) => {
           if (action(url) === 'sign') return sign(request)
           if (action(url) === 'sign-parts') return signPartUrls(request)
-          if (action(url) === 'complete') return complete(request, url, userId)
+          if (action(url) === 'complete') return complete(request)
           return json({ error: 'unknown action' }, 404)
         }),
       DELETE: ({ request }) =>
-        authed(request, (_userId, url) => {
+        handle(request, (url) => {
           if (action(url) === 'abort') return abort(url)
           if (action(url) === 'delete') return remove(url)
           return json({ error: 'unknown action' }, 404)

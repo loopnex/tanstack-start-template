@@ -1,67 +1,106 @@
-import { db } from '#/lib/db'
 import { media } from '#/db/schema'
-import { deleteObject } from '#/lib/media/s3'
+import { db } from '#/lib/db'
+import { deleteObject, objectPublicUrl } from '#/lib/media/s3'
+import type { MediaSchemaType } from '#/schema/mediaSchema'
 import { and, eq, inArray } from 'drizzle-orm'
 
 export type Media = typeof media.$inferSelect
 
-// All media for a model, optionally scoped to a collection.
-export async function getMediaForModel(
-  modelType: string,
-  modelId: string,
-  collection?: string,
-): Promise<Media[]> {
-  const conditions = [
-    eq(media.modelType, modelType),
-    eq(media.modelId, modelId),
-  ]
-  if (collection) conditions.push(eq(media.collection, collection))
-  return db
-    .select()
-    .from(media)
-    .where(and(...conditions))
-}
+export const mediaService = {
+  // DB row → mediaSchema shape (the single source of truth for media output).
+  toResult(m: Media): MediaSchemaType {
+    return {
+      mediaId: m.id,
+      key: m.key,
+      url: objectPublicUrl(m.key),
+      name: m.name,
+      mimeType: m.mimeType,
+      size: m.size,
+    }
+  },
 
-// First (or only) media item — useful for single-image fields.
-export async function getFirstMedia(
-  modelType: string,
-  modelId: string,
-  collection?: string,
-): Promise<Media | null> {
-  const [row] = await getMediaForModel(modelType, modelId, collection)
-  return row ?? null
-}
+  // Single media row for a model + collection (e.g. article thumbnail)
+  async findOne(
+    model: string,
+    modelId: string,
+    collection: string,
+  ): Promise<Media | null> {
+    const [row] = await db
+      .select()
+      .from(media)
+      .where(
+        and(
+          eq(media.modelType, model),
+          eq(media.modelId, modelId),
+          eq(media.collection, collection),
+        ),
+      )
+    return row ?? null
+  },
 
-// Delete one file by storage key: storage first, then DB.
-export async function deleteMedia(key: string): Promise<void> {
-  await deleteObject(key)
-  await db.delete(media).where(eq(media.key, key))
-}
+  // Batch-fetch one row per id (list pages, no N+1) → Map<modelId, Media>.
+  async findForIds(
+    model: string,
+    ids: string[],
+    collection: string,
+  ): Promise<Map<string, Media>> {
+    if (!ids.length) return new Map()
+    const rows = await db
+      .select()
+      .from(media)
+      .where(
+        and(
+          eq(media.modelType, model),
+          inArray(media.modelId, ids),
+          eq(media.collection, collection),
+        ),
+      )
+    return new Map(rows.map((r) => [r.modelId as string, r]))
+  },
 
-// Delete all media for a model (optionally one collection). Call before deleting the parent record to avoid orphaned objects.
-export async function deleteModelMedia(
-  modelType: string,
-  modelId: string,
-  collection?: string,
-): Promise<void> {
-  const conditions = [
-    eq(media.modelType, modelType),
-    eq(media.modelId, modelId),
-  ]
-  if (collection) conditions.push(eq(media.collection, collection))
+  // Attach an uploaded row to a model's slot, replacing (S3 + DB delete) any
+  // existing one, and return it. mediaId=undefined just clears the slot.
+  async sync(
+    model: string,
+    modelId: string,
+    collection: string,
+    mediaId: string | undefined,
+  ): Promise<Media | null> {
+    const current = await mediaService.findOne(model, modelId, collection)
+    if (current?.id === mediaId) return current // nothing changed
+    if (current) {
+      await deleteObject(current.key)
+      await db.delete(media).where(eq(media.id, current.id))
+    }
+    if (!mediaId) return null
+    const [row] = await db
+      .update(media)
+      .set({ modelType: model, modelId, collection })
+      .where(eq(media.id, mediaId))
+      .returning()
+    return row ?? null
+  },
 
-  const rows = await db
-    .select()
-    .from(media)
-    .where(and(...conditions))
-  if (rows.length === 0) return
-
-  // One failed object delete shouldn't block the rest.
-  await Promise.allSettled(rows.map((row) => deleteObject(row.key)))
-  await db.delete(media).where(
-    inArray(
-      media.id,
-      rows.map((row) => row.id),
-    ),
-  )
+  // Delete all media for a model (optionally one collection). Call before
+  // deleting the parent to avoid orphaned S3 objects.
+  async deleteAll(
+    model: string,
+    modelId: string,
+    collection?: string,
+  ): Promise<void> {
+    const conditions = [eq(media.modelType, model), eq(media.modelId, modelId)]
+    if (collection) conditions.push(eq(media.collection, collection))
+    const rows = await db
+      .select()
+      .from(media)
+      .where(and(...conditions))
+    if (!rows.length) return
+    await Promise.allSettled(rows.map((r) => deleteObject(r.key)))
+    await db.delete(media).where(
+      inArray(
+        media.id,
+        rows.map((r) => r.id),
+      ),
+    )
+  },
 }

@@ -16,12 +16,18 @@ import { Route as mainIndexRouteImport } from './routes/(main)/index'
 import { Route as FilesSplatRouteImport } from './routes/files/$'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as mainAuthRouteRouteImport } from './routes/(main)/auth/route'
+import { Route as DashboardCategoriesIndexRouteImport } from './routes/dashboard/categories/index'
+import { Route as DashboardArticlesIndexRouteImport } from './routes/dashboard/articles/index'
+import { Route as DashboardArticlesAddRouteImport } from './routes/dashboard/articles/add'
 import { Route as ApiUploadSplatRouteImport } from './routes/api/upload/$'
+import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
+import { Route as ApiDocsSplatRouteImport } from './routes/api/docs/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as mainAuthSignUpRouteImport } from './routes/(main)/auth/sign-up'
 import { Route as mainAuthSignInRouteImport } from './routes/(main)/auth/sign-in'
 import { Route as mainAuthResetPasswordRouteImport } from './routes/(main)/auth/reset-password'
 import { Route as mainAuthRequestPasswordResetRouteImport } from './routes/(main)/auth/request-password-reset'
+import { Route as DashboardArticlesEditIdRouteImport } from './routes/dashboard/articles/edit/$id'
 
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
@@ -57,9 +63,35 @@ const mainAuthRouteRoute = mainAuthRouteRouteImport.update({
   path: '/auth',
   getParentRoute: () => mainRouteRoute,
 } as any)
+const DashboardCategoriesIndexRoute =
+  DashboardCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
+const DashboardArticlesIndexRoute = DashboardArticlesIndexRouteImport.update({
+  id: '/articles/',
+  path: '/articles/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardArticlesAddRoute = DashboardArticlesAddRouteImport.update({
+  id: '/articles/add',
+  path: '/articles/add',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const ApiUploadSplatRoute = ApiUploadSplatRouteImport.update({
   id: '/api/upload/$',
   path: '/api/upload/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
+  id: '/api/rpc/$',
+  path: '/api/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsSplatRoute = ApiDocsSplatRouteImport.update({
+  id: '/api/docs/$',
+  path: '/api/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -88,6 +120,11 @@ const mainAuthRequestPasswordResetRoute =
     path: '/request-password-reset',
     getParentRoute: () => mainAuthRouteRoute,
   } as any)
+const DashboardArticlesEditIdRoute = DashboardArticlesEditIdRouteImport.update({
+  id: '/articles/edit/$id',
+  path: '/articles/edit/$id',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
@@ -101,7 +138,13 @@ export interface FileRoutesByFullPath {
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/docs/$': typeof ApiDocsSplatRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
+  '/dashboard/articles/add': typeof DashboardArticlesAddRoute
+  '/dashboard/articles/': typeof DashboardArticlesIndexRoute
+  '/dashboard/categories/': typeof DashboardCategoriesIndexRoute
+  '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof mainAuthRouteRouteWithChildren
@@ -114,7 +157,13 @@ export interface FileRoutesByTo {
   '/auth/sign-in': typeof mainAuthSignInRoute
   '/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/docs/$': typeof ApiDocsSplatRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
+  '/dashboard/articles/add': typeof DashboardArticlesAddRoute
+  '/dashboard/articles': typeof DashboardArticlesIndexRoute
+  '/dashboard/categories': typeof DashboardCategoriesIndexRoute
+  '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,7 +179,13 @@ export interface FileRoutesById {
   '/(main)/auth/sign-in': typeof mainAuthSignInRoute
   '/(main)/auth/sign-up': typeof mainAuthSignUpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/docs/$': typeof ApiDocsSplatRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/upload/$': typeof ApiUploadSplatRoute
+  '/dashboard/articles/add': typeof DashboardArticlesAddRoute
+  '/dashboard/articles/': typeof DashboardArticlesIndexRoute
+  '/dashboard/categories/': typeof DashboardCategoriesIndexRoute
+  '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -146,7 +201,13 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
+    | '/api/docs/$'
+    | '/api/rpc/$'
     | '/api/upload/$'
+    | '/dashboard/articles/add'
+    | '/dashboard/articles/'
+    | '/dashboard/categories/'
+    | '/dashboard/articles/edit/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -159,7 +220,13 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/api/auth/$'
+    | '/api/docs/$'
+    | '/api/rpc/$'
     | '/api/upload/$'
+    | '/dashboard/articles/add'
+    | '/dashboard/articles'
+    | '/dashboard/categories'
+    | '/dashboard/articles/edit/$id'
   id:
     | '__root__'
     | '/(main)'
@@ -174,7 +241,13 @@ export interface FileRouteTypes {
     | '/(main)/auth/sign-in'
     | '/(main)/auth/sign-up'
     | '/api/auth/$'
+    | '/api/docs/$'
+    | '/api/rpc/$'
     | '/api/upload/$'
+    | '/dashboard/articles/add'
+    | '/dashboard/articles/'
+    | '/dashboard/categories/'
+    | '/dashboard/articles/edit/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,6 +255,8 @@ export interface RootRouteChildren {
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   FilesSplatRoute: typeof FilesSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDocsSplatRoute: typeof ApiDocsSplatRoute
+  ApiRpcSplatRoute: typeof ApiRpcSplatRoute
   ApiUploadSplatRoute: typeof ApiUploadSplatRoute
 }
 
@@ -236,11 +311,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainAuthRouteRouteImport
       parentRoute: typeof mainRouteRoute
     }
+    '/dashboard/categories/': {
+      id: '/dashboard/categories/'
+      path: '/categories'
+      fullPath: '/dashboard/categories/'
+      preLoaderRoute: typeof DashboardCategoriesIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/articles/': {
+      id: '/dashboard/articles/'
+      path: '/articles'
+      fullPath: '/dashboard/articles/'
+      preLoaderRoute: typeof DashboardArticlesIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/articles/add': {
+      id: '/dashboard/articles/add'
+      path: '/articles/add'
+      fullPath: '/dashboard/articles/add'
+      preLoaderRoute: typeof DashboardArticlesAddRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/api/upload/$': {
       id: '/api/upload/$'
       path: '/api/upload/$'
       fullPath: '/api/upload/$'
       preLoaderRoute: typeof ApiUploadSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rpc/$': {
+      id: '/api/rpc/$'
+      path: '/api/rpc/$'
+      fullPath: '/api/rpc/$'
+      preLoaderRoute: typeof ApiRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/docs/$': {
+      id: '/api/docs/$'
+      path: '/api/docs/$'
+      fullPath: '/api/docs/$'
+      preLoaderRoute: typeof ApiDocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -277,6 +387,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/request-password-reset'
       preLoaderRoute: typeof mainAuthRequestPasswordResetRouteImport
       parentRoute: typeof mainAuthRouteRoute
+    }
+    '/dashboard/articles/edit/$id': {
+      id: '/dashboard/articles/edit/$id'
+      path: '/articles/edit/$id'
+      fullPath: '/dashboard/articles/edit/$id'
+      preLoaderRoute: typeof DashboardArticlesEditIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
   }
 }
@@ -316,11 +433,19 @@ const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(
 interface DashboardRouteRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardArticlesAddRoute: typeof DashboardArticlesAddRoute
+  DashboardArticlesIndexRoute: typeof DashboardArticlesIndexRoute
+  DashboardCategoriesIndexRoute: typeof DashboardCategoriesIndexRoute
+  DashboardArticlesEditIdRoute: typeof DashboardArticlesEditIdRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardArticlesAddRoute: DashboardArticlesAddRoute,
+  DashboardArticlesIndexRoute: DashboardArticlesIndexRoute,
+  DashboardCategoriesIndexRoute: DashboardCategoriesIndexRoute,
+  DashboardArticlesEditIdRoute: DashboardArticlesEditIdRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
@@ -332,6 +457,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   FilesSplatRoute: FilesSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDocsSplatRoute: ApiDocsSplatRoute,
+  ApiRpcSplatRoute: ApiRpcSplatRoute,
   ApiUploadSplatRoute: ApiUploadSplatRoute,
 }
 export const routeTree = rootRouteImport

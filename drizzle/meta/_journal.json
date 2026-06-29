@@ -8,6 +8,27 @@
       "when": 1781775087754,
       "tag": "0000_easy_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782365356932,
+      "tag": "0001_gray_doctor_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782367119440,
+      "tag": "0002_tired_zuras",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782714895736,
+      "tag": "0003_fuzzy_legion",
+      "breakpoints": true
     }
   ]
 }

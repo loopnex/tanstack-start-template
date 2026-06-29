@@ -5,7 +5,7 @@ function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (
     <fieldset
       data-slot="field-set"
-      className={cn('flex flex-col gap-6 disabled:opacity-70', className)}
+      className={cn('flex flex-col gap-6 disabled:opacity-50', className)}
       {...props}
     />
   )

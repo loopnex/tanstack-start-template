@@ -4,8 +4,10 @@ import {
   boolean,
   index,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { ulid } from 'ulid'
 
@@ -93,7 +95,6 @@ export const verifications = pgTable(
 )
 
 // Media — polymorphic file attachments, model_type/model_id
-// nullable to support pre-uploads before the parent record exists.
 export const media = pgTable(
   'media',
   {
@@ -151,3 +152,93 @@ export const mediaRelations = relations(media, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+// Categories
+export const categories = pgTable(
+  'categories',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
+    name: text('name').notNull().unique(),
+    slug: text('slug').notNull().unique(),
+    description: text('description'),
+    parentId: text('parent_id').references((): AnyPgColumn => categories.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (table) => [index('category_parentId_idx').on(table.parentId)],
+)
+
+// Articles
+export const articles = pgTable(
+  'articles',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => ulid()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().unique(),
+    slug: text('slug').notNull().unique(),
+    excerpt: text('excerpt'),
+    body: text('body').notNull(),
+    status: text('status')
+      .$type<'draft' | 'published'>()
+      .notNull()
+      .default('draft'),
+    metaTitle: text('meta_title'),
+    metaDescription: text('meta_description'),
+    publishedAt: timestamp('published_at'),
+    ...timestamps,
+  },
+  (table) => [
+    index('article_userId_idx').on(table.userId),
+    index('article_status_idx').on(table.status),
+  ],
+)
+
+export const articleCategories = pgTable(
+  'article_categories',
+  {
+    articleId: text('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.articleId, table.categoryId] })],
+)
+
+export const categoryRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, {
+    fields: [categories.parentId],
+    references: [categories.id],
+  }),
+  articles: many(articleCategories),
+}))
+
+export const articleRelations = relations(articles, ({ one, many }) => ({
+  author: one(users, {
+    fields: [articles.userId],
+    references: [users.id],
+  }),
+  categories: many(articleCategories),
+}))
+
+export const articleCategoryRelations = relations(
+  articleCategories,
+  ({ one }) => ({
+    article: one(articles, {
+      fields: [articleCategories.articleId],
+      references: [articles.id],
+    }),
+    category: one(categories, {
+      fields: [articleCategories.categoryId],
+      references: [categories.id],
+    }),
+  }),
+)

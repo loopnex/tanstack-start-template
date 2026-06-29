@@ -1,13 +1,11 @@
-import { Button } from '#/components/ui/button'
 import { Label } from '#/components/ui/label'
 import { uploadFile } from '#/lib/media/upload'
 import { cn } from '#/lib/utils'
+import type { MediaSchemaType } from '#/schema/mediaSchema'
 import {
   AlertCircle,
   AlertTriangle,
   Archive,
-  Check,
-  Clock,
   Code2,
   File,
   FileSpreadsheet,
@@ -15,7 +13,6 @@ import {
   ImageIcon,
   Loader2,
   Music,
-  Trash2,
   UploadCloud,
   Video,
   X,
@@ -50,14 +47,8 @@ interface FileEntry {
   result?: UploadResult // set on completion; carries the key used to delete
 }
 
-export interface UploadResult {
-  mediaId: string // DB row ID
-  key: string // storage key; used for deletes
-  url: string // public URL
-  name: string
-  mimeType: string
-  size: number
-}
+// Single source of truth: the media output shape (mediaId, key, url, name, …)
+export type UploadResult = MediaSchemaType
 
 export interface FileUploaderProps {
   fileTypes?: FileType[] // preset categories → Accept map
@@ -71,8 +62,10 @@ export interface FileUploaderProps {
   modelId?: string // polymorphic relation
   label?: string
   description?: string // auto-built from fileTypes/accept/size when omitted
-  // Pre-existing files shown on mount (e.g. an edit page) — rendered as completed
-  // rows; their trash button deletes from storage. Map media rows to UploadResult.
+  /*
+  Pre-existing files shown on mount (e.g. an edit page) — rendered as completed
+  rows; their trash button deletes from storage. Map media rows to UploadResult.
+  */
   initialFiles?: UploadResult[]
   // Per-file validator (runs in dropzone); return null to accept
   validator?: (file: File) => FileError | FileError[] | null
@@ -123,6 +116,7 @@ function resolveAccept(
   return Object.keys(merged).length > 0 ? merged : undefined
 }
 
+// Dropzone glyph: the lone file-type's icon, else a generic upload cloud.
 function resolveDropzoneIcon(fileTypes?: FileType[]): React.ElementType {
   if (fileTypes?.length === 1) return FILE_TYPE_CONFIG[fileTypes[0]].icon
   return UploadCloud
@@ -243,29 +237,85 @@ function getFileIcon(mimeType: string): React.ElementType {
   return File
 }
 
-// --- Constants ---
-const STATUS_ICON_MAP: Record<FileStatus, React.ElementType> = {
-  pending: Clock,
-  uploading: Loader2,
-  complete: Check,
-  error: AlertTriangle,
-  cancelled: AlertTriangle,
-}
-
-const STATUS_VARIANT = {
-  pending: 'secondary',
-  uploading: 'default',
-  complete: 'success',
-  error: 'destructive',
-  cancelled: 'secondary',
-} as const
-
 function handleDropzoneError(err: Error) {
   console.error('[FileUploader]', err.message)
 }
 
-// --- File Row ---
-const FileRow = React.memo(function FileRow({
+// --- Rounded progress ring shown over an uploading tile ---
+function CircularProgress({ value }: { value: number }) {
+  const radius = 40
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.min(100, Math.max(0, value))
+  const offset = circumference - (clamped / 100) * circumference
+
+  return (
+    <div className="relative flex items-center justify-center p-4">
+      <svg className="size-28 -rotate-90" viewBox="0 0 112 112">
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          strokeWidth="6"
+          className="stroke-white/25"
+        />
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="stroke-emerald-500 transition-[stroke-dashoffset] duration-300"
+        />
+      </svg>
+      <span className="absolute text-lg font-semibold text-white">
+        {Math.round(clamped)}%
+      </span>
+    </div>
+  )
+}
+
+// --- Shared tile pieces ---
+
+// Red close badge anchored to the outer top-right corner (white X / spinner).
+function RemoveButton({
+  entry,
+  onRemove,
+}: {
+  entry: FileEntry
+  onRemove: (id: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onRemove(entry.id)}
+      disabled={entry.deleting}
+      aria-label={entry.status === 'complete' ? 'Delete file' : 'Remove file'}
+      className="absolute -top-2 -right-2 z-10 flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm ring-2 ring-background transition-colors hover:bg-destructive/85 disabled:opacity-50"
+    >
+      {entry.deleting ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : (
+        <X className="size-3.5" />
+      )}
+    </button>
+  )
+}
+
+// Pending/uploading overlay — black tint + rounded ring + percentage.
+function BusyOverlay({ value }: { value: number }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+      <CircularProgress value={value} />
+    </div>
+  )
+}
+
+// --- Single-file preview — fills the parent width, image keeps its ratio ---
+const SinglePreview = React.memo(function SinglePreview({
   entry,
   onRemove,
 }: {
@@ -273,85 +323,81 @@ const FileRow = React.memo(function FileRow({
   onRemove: (id: string) => void
 }) {
   const Icon = getFileIcon(entry.mimeType)
-  const StatusIcon = STATUS_ICON_MAP[entry.status]
+  const isError = entry.status === 'error' || entry.status === 'cancelled'
+  const isBusy = entry.status === 'uploading' || entry.status === 'pending'
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
-      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-secondary">
-        {entry.preview ? (
+    <div className="relative w-full">
+      <div className="relative w-full overflow-hidden rounded-lg border-2 border-dashed border-input bg-secondary/40">
+        {isError ? (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-1.5 p-4 text-center">
+            <AlertTriangle
+              className="size-6 text-destructive-foreground"
+              strokeWidth={1.5}
+            />
+            <span className="text-xs font-medium text-destructive-foreground">
+              {entry.error}
+            </span>
+          </div>
+        ) : entry.preview ? (
+          <img src={entry.preview} alt={entry.name} className="block w-full" />
+        ) : (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-center">
+            <Icon className="size-9 text-muted-foreground" strokeWidth={1.5} />
+            <span className="line-clamp-2 text-sm text-muted-foreground">
+              {entry.name}
+            </span>
+          </div>
+        )}
+        {isBusy && <BusyOverlay value={entry.progress} />}
+      </div>
+      <RemoveButton entry={entry} onRemove={onRemove} />
+    </div>
+  )
+})
+
+// --- Multi-file tile — square, dashed border to match the dropzone ---
+const FileTile = React.memo(function FileTile({
+  entry,
+  onRemove,
+}: {
+  entry: FileEntry
+  onRemove: (id: string) => void
+}) {
+  const Icon = getFileIcon(entry.mimeType)
+  const isError = entry.status === 'error' || entry.status === 'cancelled'
+  const isBusy = entry.status === 'uploading' || entry.status === 'pending'
+
+  return (
+    <div className="relative">
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg border-2 border-dashed border-input bg-secondary/40">
+        {isError ? (
+          <div className="flex size-full flex-col items-center justify-center gap-1.5 p-2 text-center">
+            <AlertTriangle
+              className="size-5 text-destructive-foreground"
+              strokeWidth={1.5}
+            />
+            <span className="line-clamp-2 text-[11px] font-medium text-destructive-foreground">
+              {entry.error}
+            </span>
+          </div>
+        ) : entry.preview ? (
           <img
             src={entry.preview}
             alt={entry.name}
-            className="size-10 object-cover"
+            className="size-full object-cover"
           />
         ) : (
-          <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{entry.name}</p>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">
-            {formatBytes(entry.size)}
-          </span>
-          {entry.error && (
-            <span className="truncate text-xs text-destructive-foreground">
-              · {entry.error}
+          <div className="flex size-full flex-col items-center justify-center gap-1.5 p-2 text-center">
+            <Icon className="size-7 text-muted-foreground" strokeWidth={1.5} />
+            <span className="line-clamp-2 text-[11px] text-muted-foreground">
+              {entry.name}
             </span>
-          )}
-        </div>
-        {entry.status !== 'pending' && (
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-secondary">
-            <div
-              className={cn(
-                'h-full rounded-full',
-                entry.status === 'uploading' &&
-                  'bg-primary transition-all duration-300',
-                entry.status === 'complete' && 'w-full bg-success-foreground',
-                (entry.status === 'error' || entry.status === 'cancelled') &&
-                  'w-full bg-destructive-foreground opacity-60',
-              )}
-              style={
-                entry.status === 'uploading'
-                  ? { width: `${entry.progress}%` }
-                  : undefined
-              }
-            />
           </div>
         )}
+        {isBusy && <BusyOverlay value={entry.progress} />}
       </div>
-
-      {/* Status */}
-      <Button
-        type="button"
-        variant={STATUS_VARIANT[entry.status]}
-        size="icon-sm"
-        tabIndex={-1}
-        aria-label={`Status: ${entry.status}`}
-      >
-        <StatusIcon
-          className={entry.status === 'uploading' ? 'animate-spin' : undefined}
-        />
-      </Button>
-
-      {/* Action */}
-      <Button
-        type="button"
-        variant="destructive"
-        size="icon-sm"
-        onClick={() => onRemove(entry.id)}
-        disabled={entry.deleting}
-        aria-label={entry.status === 'complete' ? 'Delete file' : 'Remove file'}
-      >
-        {entry.deleting ? (
-          <Loader2 className="animate-spin" />
-        ) : entry.status === 'complete' ? (
-          <Trash2 />
-        ) : (
-          <X />
-        )}
-      </Button>
+      <RemoveButton entry={entry} onRemove={onRemove} />
     </div>
   )
 })
@@ -443,6 +489,7 @@ export function FileUploader({
         collection,
         modelType,
         modelId,
+        maxSize,
         signal: controller.signal,
         onProgress: (percent) => patch(entry.id, { progress: percent }),
       })
@@ -579,105 +626,113 @@ export function FileUploader({
     [patch],
   )
 
+  // The drop zone (the "handler") — big dashed box with drag/hover/drop states.
+  const dropzone = (
+    <div
+      {...getRootProps({ 'aria-labelledby': label ? labelId : undefined })}
+      className={cn(
+        'group relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-input bg-background px-6 py-10 text-center transition-all duration-200 outline-none select-none',
+        // Idle hover
+        'hover:border-primary/50 hover:bg-muted',
+        // Keyboard focus only
+        'focus-visible:border-primary focus-visible:bg-muted',
+        // Drag states
+        (isDragGlobal || isDragActive) && 'bg-muted',
+        isDragGlobal && !isDragActive && 'border-primary/40',
+        isDragAccept && 'border-primary',
+        isDragReject && 'border-destructive',
+        disabled && 'pointer-events-none opacity-50',
+      )}
+    >
+      <input {...getInputProps()} />
+
+      {/* Drag overlay */}
+      {isDragActive && (
+        <div
+          className={cn(
+            'absolute inset-0 flex items-center justify-center rounded-md backdrop-blur-[2px]',
+            isDragAccept && 'bg-primary/15',
+            isDragReject && 'bg-destructive/15',
+          )}
+        >
+          <p
+            className={cn(
+              'text-sm font-semibold',
+              isDragAccept ? 'text-primary' : 'text-destructive-foreground',
+            )}
+          >
+            {isDragAccept
+              ? 'Drop to upload'
+              : multiple
+                ? 'One or more unsupported file types'
+                : 'Unsupported file type'}
+          </p>
+        </div>
+      )}
+
+      <div
+        className={cn(
+          'flex size-16 items-center justify-center rounded-full bg-secondary transition-all duration-200 group-focus-visible:bg-primary/10',
+          isDragAccept && 'scale-110 bg-primary/10',
+          isDragReject && 'scale-110 bg-destructive/10',
+        )}
+      >
+        {isDragReject ? (
+          <AlertCircle
+            className="size-7 text-destructive-foreground transition-colors duration-200"
+            strokeWidth={1.5}
+          />
+        ) : (
+          <DropzoneIcon
+            className={cn(
+              'size-7 text-secondary-foreground transition-colors duration-200 group-focus-visible:text-primary',
+              isDragAccept && 'text-primary',
+            )}
+            strokeWidth={1.5}
+          />
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-sm font-medium">
+          Drag & drop {multiple ? 'files' : 'file'} here, or{' '}
+          <span className="text-primary underline-offset-2 hover:underline">
+            click to browse
+          </span>
+        </p>
+        {autoDescription && (
+          <p className="text-xs text-muted-foreground">{autoDescription}</p>
+        )}
+      </div>
+    </div>
+  )
+
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-3', className)}>
       {/* Form-style label */}
       {label && (
-        <Label id={labelId} className={cn(disabled && 'opacity-70')}>
+        <Label id={labelId} className={cn(disabled && 'opacity-50')}>
           {label}
         </Label>
       )}
 
-      {/* Dropzone */}
-      {!dropzoneHidden && (
-        <div
-          {...getRootProps({ 'aria-labelledby': label ? labelId : undefined })}
-          className={cn(
-            'group relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-input bg-background px-6 py-10 text-center transition-all duration-200 outline-none select-none',
-            // Idle hover
-            'hover:border-primary/50 hover:bg-muted',
-            // Keyboard focus only — a click won't stick the highlight after the dialog
-            'focus-visible:border-primary focus-visible:bg-muted',
-            // Drag states
-            (isDragGlobal || isDragActive) && 'bg-muted',
-            isDragGlobal && !isDragActive && 'border-primary/40',
-            isDragAccept && 'border-primary',
-            isDragReject && 'border-destructive',
-            disabled && 'pointer-events-none opacity-70',
-          )}
-        >
-          <input {...getInputProps()} />
+      {/* Single mode — once a file exists the full-width preview replaces the
+          drop zone; removing it (deletes from storage if uploaded) brings it back. */}
+      {!multiple && entries[0] ? (
+        <SinglePreview entry={entries[0]} onRemove={removeEntry} />
+      ) : (
+        <>
+          {!dropzoneHidden && dropzone}
 
-          {/* Drag overlay */}
-          {isDragActive && (
-            <div
-              className={cn(
-                'absolute inset-0 flex items-center justify-center rounded-md backdrop-blur-[2px]',
-                isDragAccept && 'bg-primary/15',
-                isDragReject && 'bg-destructive/15',
-              )}
-            >
-              <p
-                className={cn(
-                  'text-sm font-semibold',
-                  isDragAccept ? 'text-primary' : 'text-destructive-foreground',
-                )}
-              >
-                {isDragAccept
-                  ? 'Drop to upload'
-                  : multiple
-                    ? 'One or more unsupported file types'
-                    : 'Unsupported file type'}
-              </p>
+          {/* Multiple — selected files as dashed tiles below the drop zone. */}
+          {multiple && entries.length > 0 && (
+            <div className="mt-2 grid grid-cols-3 gap-4 sm:grid-cols-4">
+              {entries.map((entry) => (
+                <FileTile key={entry.id} entry={entry} onRemove={removeEntry} />
+              ))}
             </div>
           )}
-
-          <div
-            className={cn(
-              'flex size-16 items-center justify-center rounded-full bg-secondary transition-all duration-200 group-focus-visible:bg-primary/10',
-              isDragAccept && 'scale-110 bg-primary/10',
-              isDragReject && 'scale-110 bg-destructive/10',
-            )}
-          >
-            {isDragReject ? (
-              <AlertCircle
-                className="size-7 text-destructive-foreground transition-colors duration-200"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <DropzoneIcon
-                className={cn(
-                  'size-7 text-secondary-foreground transition-colors duration-200 group-focus-visible:text-primary',
-                  isDragAccept && 'text-primary',
-                )}
-                strokeWidth={1.5}
-              />
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              Drag & drop {multiple ? 'files' : 'file'} here, or{' '}
-              <span className="text-primary underline-offset-2 hover:underline">
-                click to browse
-              </span>
-            </p>
-            {autoDescription && (
-              <p className="text-xs text-muted-foreground">{autoDescription}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* File list (single or multiple). In single mode the drop zone above is
-          hidden once a file exists, so changing it means removing this row first
-          — and removing a completed row deletes it from storage. */}
-      {entries.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {entries.map((entry) => (
-            <FileRow key={entry.id} entry={entry} onRemove={removeEntry} />
-          ))}
-        </div>
+        </>
       )}
     </div>
   )

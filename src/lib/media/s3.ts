@@ -14,18 +14,26 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 const BUCKET = process.env.S3_BUCKET!
 const SIGN_EXPIRES = 60 * 60 // presigned URLs valid for 1 hour
 
-/*
-Lazily-built, memoized client so importing this module is side-effect-free — a
-missing/invalid S3 config only errors when storage is actually used, not when an
-unrelated route imports a helper from here. `endpoint` + `forcePathStyle` let
-this target any S3-compatible provider (R2, MinIO, Backblaze, DO Spaces); leave
-them unset for AWS S3.
+/**
+ * DEV:  direct S3 URL — Nitro dev middleware skips <img> requests so the /files route can't serve them.
+ * PROD: {BETTER_AUTH_URL}/files/{key} — streamed through the app, no Vite in prod so no interception.
  */
+export function objectPublicUrl(key: string) {
+  if (process.env.NODE_ENV !== 'production') {
+    const endpoint = process.env.S3_ENDPOINT?.replace(/\/+$/, '')
+    if (endpoint) return `${endpoint}/${BUCKET}/${key}`
+    return `https://${BUCKET}.s3.${process.env.S3_REGION!}.amazonaws.com/${key}`
+  }
+  return `${process.env.BETTER_AUTH_URL!.replace(/\/+$/, '')}/files/${key}`
+}
+
+// Lazy, memoized client so this module is side-effect-free — bad S3 config only
+// errors when storage is used. endpoint + forcePathStyle target any S3-compatible
+// provider (R2, MinIO, …); leave unset for AWS.
 let client: S3Client | undefined
 function s3() {
   client ??= new S3Client({
-    // 'auto' is the convention for S3-compatible providers (R2 etc.); set a real
-    // region (e.g. us-east-1) for AWS. The SDK throws at construction if unset.
+    // 'auto' for S3-compatible providers; a real region (us-east-1) for AWS.
     region: process.env.S3_REGION || 'auto',
     endpoint: process.env.S3_ENDPOINT || undefined,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
@@ -69,9 +77,7 @@ export async function createMultipartUpload(key: string, contentType: string) {
   return { key, uploadId: out.UploadId! }
 }
 
-/*
-Presigned PUT URLs for the given parts — signed on demand so each URL's expiry starts when the client is about to upload it, not at the start of the upload.
-*/
+// Presigned PUT URLs for parts, signed on demand so expiry starts at upload time.
 export function signParts(
   key: string,
   uploadId: string,
@@ -133,7 +139,7 @@ export async function headObject(key: string) {
   }
 }
 
-// Fetch an object for serving; returns the raw command output (Body + metadata).
+// Fetch an object to stream back to the browser (used by the /files route).
 export function getObject(key: string) {
   return s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
 }

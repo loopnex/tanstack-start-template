@@ -29,7 +29,7 @@ const MenuCollapsible = ({
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
         className={cn(
-          'flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-1.5 transition-colors focus-visible:outline-hidden',
+          'flex min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 transition-colors focus-visible:outline-hidden',
           {
             'bg-primary text-primary-foreground': active,
             'text-secondary-foreground/70 hover:bg-secondary focus-visible:bg-secondary':

@@ -30,8 +30,10 @@ function DashboardLayout() {
         <Sidebar />
         <div className="flex w-full flex-col overflow-hidden">
           <Header />
-          <main className="grow overflow-y-auto bg-muted p-6 dark:bg-background">
-            <Outlet />
+          <main className="grow overflow-y-auto bg-muted dark:bg-background">
+            <div className="container py-6">
+              <Outlet />
+            </div>
           </main>
           {/* Notification Side Panel Here */}
         </div>

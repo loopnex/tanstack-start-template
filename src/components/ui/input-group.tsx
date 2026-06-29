@@ -9,7 +9,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="input-group"
       className={cn(
-        'flex h-10 w-full items-center rounded-md border-2 border-input bg-background transition-[color,box-shadow] has-disabled:opacity-70 has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[input[aria-invalid=true]]:border-destructive!',
+        'flex h-10 w-full items-center rounded-md border-2 border-input bg-background transition-[color,box-shadow] has-disabled:cursor-not-allowed has-disabled:opacity-50 has-[[data-slot=input-group-control]:focus-visible]:border-primary has-[input[aria-invalid=true]]:border-destructive!',
         className,
       )}
       {...props}

@@ -20,6 +20,7 @@ export type UploadOptions = {
   collection?: string
   modelType?: string
   modelId?: string
+  maxSize?: number // server caps at this (defaults to 100 MB when absent)
   signal?: AbortSignal
   onProgress?: (percent: number) => void
 }
@@ -36,6 +37,7 @@ export async function uploadFile(
       collection: opts.collection,
       contentType: file.type,
       size: file.size,
+      maxSize: opts.maxSize,
     },
     opts.signal,
   )) as SignResponse
@@ -67,9 +69,8 @@ async function uploadMultipart(
   const { signal, onProgress } = opts
   const { key, uploadId, partSize, partCount } = signed
 
-  /*
-  Sign part URLs in batches the first time each batch is reached. The fetch is cached per batch so concurrent workers share one request; a failure clears it so the batch can be retried.
-  */
+  // Sign part URLs per batch on first use; the fetch is cached so workers share
+  // it, and cleared on failure so the batch can retry.
   const urls = new Map<number, string>()
   const batches = new Map<number, Promise<void>>()
   const urlFor = async (partNumber: number): Promise<string> => {
@@ -170,6 +171,7 @@ function finalize(
       filename: file.name,
       modelType: opts.modelType,
       modelId: opts.modelId,
+      maxSize: opts.maxSize,
     },
     opts.signal,
   ) as Promise<UploadResult>
@@ -182,7 +184,7 @@ const percent = (loaded: number, total: number) =>
 const aborted = () => new DOMException('Aborted', 'AbortError')
 const isAbort = (e: unknown) => (e as Error)?.name === 'AbortError'
 
-// PUT via XHR so we get real upload progress and signal-based abort. Resolves the response ETag (S3 returns it as a header; empty body) for multipart parts.
+// PUT via XHR for upload progress + abort; resolves the response ETag for parts.
 function xhrPut(
   url: string,
   body: Blob,

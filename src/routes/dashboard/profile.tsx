@@ -1,4 +1,4 @@
-import { Button } from '#/components/ui/button'
+import { Button, buttonVariants } from '#/components/ui/button'
 import {
   Card,
   CardContent,
@@ -38,10 +38,11 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createFileRoute,
+  Link,
   useRouteContext,
   useRouter,
 } from '@tanstack/react-router'
-import { Eye, EyeOff, Lock, Mail, User2 } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, User2 } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -148,11 +149,19 @@ function ProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Profile Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account information and password
-        </p>
+      <div className="flex items-center gap-3">
+        <Link
+          to="/dashboard"
+          className={buttonVariants({ variant: 'outline', size: 'icon' })}
+        >
+          <ArrowLeft />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold">Profile Settings</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your account information and password
+          </p>
+        </div>
       </div>
 
       {/* Display Name */}

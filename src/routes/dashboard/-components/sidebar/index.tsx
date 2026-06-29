@@ -22,7 +22,8 @@ const Sidebar = () => {
       <Drawer open={openMobile} onClose={setOpenMobile}>
         <DrawerContent side="left">
           <DrawerHeader>
-            <DrawerTitle>Brand Logo</DrawerTitle>
+            <DrawerTitle className="sr-only">Navigation</DrawerTitle>
+            <img src="/logo.svg" alt="Brand Logo" width={100} height={40} />
           </DrawerHeader>
           <SidebarMenu />
         </DrawerContent>
@@ -31,10 +32,10 @@ const Sidebar = () => {
   }
 
   return (
-    <aside
-      suppressHydrationWarning
-      className="hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin] duration-300 md:flex sidebar-collapsed:-ml-64"
-    >
+    <aside className="hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin] duration-300 md:flex sidebar-collapsed:-ml-64">
+      <div className="flex h-14 shrink-0 items-center justify-center border-b px-4">
+        <img src="/logo.svg" alt="Brand Logo" width={100} height={40} />
+      </div>
       <SidebarMenu />
     </aside>
   )

@@ -1,4 +1,10 @@
-import { LayoutGrid, Settings, SquarePen, UserRound } from 'lucide-react'
+import {
+  ChartBar,
+  LayoutGrid,
+  Settings,
+  SquarePen,
+  UserRound,
+} from 'lucide-react'
 
 export interface SubMenuItem {
   id: number
@@ -15,41 +21,68 @@ export interface MenuItem {
   submenu?: SubMenuItem[]
 }
 
-export const menuList: MenuItem[] = [
+export interface MenuGroup {
+  label: string
+  items: MenuItem[]
+}
+
+export const menuGroups: MenuGroup[] = [
   {
-    id: 1,
-    title: 'Dashboard',
-    icon: <LayoutGrid className="icon" />,
-    url: '/dashboard',
-  },
-  {
-    id: 2,
-    title: 'Articles',
-    icon: <SquarePen className="icon" />,
-    url: '/dashboard/articles',
-  },
-  {
-    id: 3,
-    title: 'Users',
-    icon: <UserRound className="icon" />,
-    baseUrl: '/dashboard/users',
-    submenu: [
+    label: 'General',
+    items: [
       {
-        id: 4,
-        title: 'Users',
-        url: '/dashboard/users',
-      },
-      {
-        id: 5,
-        title: 'Add User',
-        url: '/dashboard/users/add',
+        id: 1,
+        title: 'Dashboard',
+        icon: <LayoutGrid className="icon" />,
+        url: '/dashboard',
       },
     ],
   },
   {
-    id: 6,
-    title: 'Settings',
-    icon: <Settings className="icon" />,
-    url: '/dashboard/settings',
+    label: 'Content',
+    items: [
+      {
+        id: 2,
+        title: 'Categories',
+        icon: <ChartBar className="icon" />,
+        url: '/dashboard/categories',
+      },
+      {
+        id: 3,
+        title: 'Articles',
+        icon: <SquarePen className="icon" />,
+        baseUrl: '/dashboard/articles',
+        submenu: [
+          { id: 1, title: 'All Articles', url: '/dashboard/articles' },
+          { id: 2, title: 'Add Article', url: '/dashboard/articles/add' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      {
+        id: 4,
+        title: 'Users',
+        icon: <UserRound className="icon" />,
+        baseUrl: '/dashboard/users',
+        submenu: [
+          { id: 1, title: 'All Users', url: '/dashboard/users' },
+          { id: 2, title: 'Add User', url: '/dashboard/users/add' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      {
+        id: 5,
+        title: 'Settings',
+        icon: <Settings className="icon" />,
+        url: '/dashboard/settings',
+      },
+    ],
   },
 ]
