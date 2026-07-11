@@ -97,7 +97,9 @@ const userFormSchema = (isCreate: boolean) =>
   z
     .object({
       name: z.string().nonempty('Name is required'),
-      email: z.string().nonempty('Email is required').email('Invalid email'),
+      email: z.email({
+        error: ({ input }) => (!input ? 'Email is required' : 'Invalid email'),
+      }),
       password: z.string().optional(),
       role: z.enum(USER_ROLES),
     })
@@ -170,7 +172,12 @@ function UsersPage() {
   const onSubmit = async (values: UserFormValues) => {
     try {
       if (selected) {
-        await updateMutation.mutateAsync({ id: selected.id, role: values.role })
+        await updateMutation.mutateAsync({
+          id: selected.id,
+          name: values.name,
+          email: values.email,
+          role: values.role,
+        })
       } else {
         await createMutation.mutateAsync({
           name: values.name,
@@ -394,13 +401,7 @@ function UsersPage() {
                   render={({ field, fieldState }) => (
                     <Field>
                       <FieldLabel htmlFor="name">Name</FieldLabel>
-                      <Input
-                        id="name"
-                        autoFocus
-                        disabled={!!selected}
-                        className={selected ? 'disabled:opacity-75' : ''}
-                        {...field}
-                      />
+                      <Input id="name" autoFocus {...field} />
                       <FieldError errors={[fieldState.error]} />
                     </Field>
                   )}
@@ -411,13 +412,7 @@ function UsersPage() {
                   render={({ field, fieldState }) => (
                     <Field>
                       <FieldLabel htmlFor="email">Email</FieldLabel>
-                      <Input
-                        id="email"
-                        type="email"
-                        disabled={!!selected}
-                        className={selected ? 'disabled:opacity-75' : ''}
-                        {...field}
-                      />
+                      <Input id="email" type="email" {...field} />
                       <FieldError errors={[fieldState.error]} />
                     </Field>
                   )}

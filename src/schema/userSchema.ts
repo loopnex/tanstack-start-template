@@ -30,19 +30,25 @@ export type UserFilterSchemaType = z.infer<typeof userFilterSchema>
 // Create user
 export const userInputSchema = z.object({
   name: z.string().nonempty('Name is required'),
-  email: z.string().nonempty('Email is required').email('Invalid email'),
+  email: z.email({
+    error: ({ input }) => (!input ? 'Email is required' : 'Invalid email'),
+  }),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(USER_ROLES),
 })
 export type UserInputSchemaType = z.infer<typeof userInputSchema>
 
-// Update user (role only — name/email/password aren't editable here)
+// Update user (name/email/role — password isn't editable here)
 export const userUpdateSchema = z.object({
+  name: z.string().nonempty('Name is required'),
+  email: z.email({
+    error: ({ input }) => (!input ? 'Email is required' : 'Invalid email'),
+  }),
   role: z.enum(USER_ROLES),
 })
 export type UserUpdateSchemaType = z.infer<typeof userUpdateSchema>
 
-// Ban / unban a user — its own action, separate from updateUser
+// Ban / unban a user
 export const userBanSchema = z.object({
   banned: z.boolean(),
   banReason: z.string().optional(),

@@ -4,7 +4,6 @@ import { db } from '#/lib/db'
 import { getPaginationQuery } from '#/lib/pagination'
 import { adminOnly } from '#/orpc'
 import { paginated } from '#/schema/paginationSchema'
-import type { UserSchemaType } from '#/schema/userSchema'
 import {
   userBanSchema,
   userFilterSchema,
@@ -13,39 +12,8 @@ import {
   userUpdateSchema,
 } from '#/schema/userSchema'
 import { ORPCError } from '@orpc/server'
-import { and, desc, eq, ilike, or } from 'drizzle-orm'
+import { and, desc, eq, ilike, not, or } from 'drizzle-orm'
 import * as z from 'zod'
-
-// better-auth's admin API returns its own user shape — reshape it to ours
-// rather than trust its types (role comes back as a plain `string`).
-function toUserResult(user: {
-  id: string
-  name: string
-  email: string
-  emailVerified: boolean
-  image?: string | null
-  role?: string | string[] | null
-  banned?: boolean | null
-  banReason?: string | null
-  banExpires?: Date | null
-  createdAt: Date
-  updatedAt: Date
-}): UserSchemaType {
-  const role = Array.isArray(user.role) ? user.role[0] : user.role
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    emailVerified: user.emailVerified,
-    image: user.image ?? null,
-    role: (role as UserSchemaType['role']) ?? null,
-    banned: user.banned ?? null,
-    banReason: user.banReason ?? null,
-    banExpires: user.banExpires ?? null,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }
-}
 
 // Get Users (Paginated)
 const getUsers = adminOnly
@@ -132,10 +100,14 @@ const createUser = adminOnly
       },
     })
 
-    return toUserResult(user)
+    const [created] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+    return created
   })
 
-// Update User (role only)
+// Update User (name, email, role)
 const updateUser = adminOnly
   .route({
     method: 'PUT',
@@ -146,7 +118,7 @@ const updateUser = adminOnly
   .input(z.object({ id: z.string(), ...userUpdateSchema.shape }))
   .output(userSchema)
   .handler(async ({ input, context }) => {
-    const { id, role } = input
+    const { id, name, email, role } = input
 
     const [existing] = await db
       .select()
@@ -155,10 +127,23 @@ const updateUser = adminOnly
     if (!existing)
       throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
-    if (id === context.user.id)
+    if (id === context.user.id && role !== existing.role)
       throw new ORPCError('CONFLICT', {
         message: 'You cannot change your own role',
       })
+
+    const [taken] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.email, email), not(eq(usersTable.id, id))))
+      .limit(1)
+    if (taken)
+      throw new ORPCError('CONFLICT', { message: 'Email already taken' })
+
+    await auth.api.adminUpdateUser({
+      headers: context.headers,
+      body: { userId: id, data: { name, email } },
+    })
 
     await auth.api.setRole({
       headers: context.headers,

@@ -30,7 +30,7 @@ function DashboardLayout() {
         <Sidebar />
         <div className="flex w-full flex-col overflow-hidden">
           <Header />
-          <main className="container grow overflow-y-auto bg-muted py-6 dark:bg-background">
+          <main className="grid grow overflow-y-auto bg-muted py-6 dark:bg-background">
             <div className="container">
               <Outlet />
             </div>

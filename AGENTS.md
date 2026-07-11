@@ -21,6 +21,7 @@ an S3 client living in-process are all fine).
 - **Email:** react-email templates + nodemailer (`src/lib/mailer`).
 - **Storage:** S3-compatible (R2/MinIO/AWS) via presigned uploads (`src/lib/media`).
 - **Forms/validation:** react-hook-form + zod (`@hookform/resolvers`). All schemas in `src/schema`.
+  - **Email fields:** zod v4 deprecated `z.string().email()` — use `z.email({ error: ({ input }) => (!input ? 'Email is required' : 'Invalid email') })` instead (see `src/schema/authSchema.ts`).
 - **UI:** Tailwind v4, base-ui primitives wrapped in `src/components/ui`, lucide icons, sonner toasts.
 - **Import alias:** `#/*` → `src/*`. Always use it.
 
