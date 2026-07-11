@@ -11,7 +11,7 @@ const MenuItem = ({ icon, title, url }: MenuItemProps) => {
   return (
     <Link
       to={url}
-      activeOptions={{ exact: true }}
+      activeOptions={{ exact: true, includeSearch: false }}
       className="flex min-h-10 items-center gap-2 rounded-md px-2.5 py-2 transition-colors focus-visible:outline-hidden"
       activeProps={{ className: 'bg-primary text-primary-foreground' }}
       inactiveProps={{

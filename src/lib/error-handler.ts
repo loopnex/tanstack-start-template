@@ -15,21 +15,22 @@ interface ApiError {
  * - Unknown (500): a generic "Something went wrong" toast.
  */
 export function handleErrorResponse<T extends FieldValues>(
-  error: ApiError,
+  error: unknown,
   setError?: UseFormSetError<T>,
 ) {
-  const issues = error.data?.issues
+  const { status, message, data } = error as ApiError
+  const issues = data?.issues
   if (setError && issues) {
-    for (const { path, message } of issues) {
-      if (typeof path?.[0] === 'string') {
-        setError(path[0] as Path<T>, { message })
+    for (const { path, message: issueMessage } of issues) {
+      if (typeof path[0] === 'string') {
+        setError(path[0] as Path<T>, { message: issueMessage })
       }
     }
     return
   }
   toast.error(
-    error.status && error.status >= 500
+    status && status >= 500
       ? 'Something went wrong'
-      : (error.message ?? 'Something went wrong'),
+      : (message ?? 'Something went wrong'),
   )
 }

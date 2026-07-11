@@ -10,7 +10,7 @@ const MenuCollapsibleItem = ({ title, url }: MenuCollapsibleItemProps) => {
   return (
     <Link
       to={url}
-      activeOptions={{ exact: true }}
+      activeOptions={{ exact: true, includeSearch: false }}
       className="relative flex items-center transition-colors before:h-px before:w-[1.6rem] before:bg-border before:transition-colors before:content-[''] focus-visible:outline-hidden"
       activeProps={{
         className:

@@ -48,7 +48,8 @@ import {
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { client, safeClient } from '#/lib/orpc'
+import { orpc } from '#/lib/orpc'
+import { paginationHandlers } from '#/lib/pagination'
 import { cn, formatDateTime } from '#/lib/utils'
 import {
   categoryFilterSchema,
@@ -59,23 +60,10 @@ import {
 } from '#/schema/categorySchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import slugify from '@sindresorhus/slugify'
-import {
-  keepPreviousData,
-  queryOptions,
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import {
-  ArrowLeft,
-  EllipsisVertical,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-} from 'lucide-react'
+import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -83,18 +71,7 @@ import { useDebounceCallback } from 'usehooks-ts'
 
 // Paginated query for the table (filters come from URL)
 const categoriesQuery = (filters: CategoryFilterSchemaType) =>
-  queryOptions({
-    queryKey: ['categories', filters] as const,
-    queryFn: () => client.categories.getCategories(filters),
-    // Keep the current rows on screen while the next page loads (no blank flash)
-    placeholderData: keepPreviousData,
-  })
-
-// Full id/name list for the parent select and parent-name lookup (unpaginated)
-const categoryOptionsQuery = queryOptions({
-  queryKey: ['categoryOptions'] as const,
-  queryFn: () => client.categories.getCategoryOptions(),
-})
+  orpc.categories.getCategories.queryOptions({ input: filters })
 
 export const Route = createFileRoute('/dashboard/categories/')({
   validateSearch: (s) => categoryFilterSchema.parse(s),
@@ -102,7 +79,9 @@ export const Route = createFileRoute('/dashboard/categories/')({
   loader: ({ context, deps }) =>
     Promise.all([
       context.queryClient.ensureQueryData(categoriesQuery(deps)),
-      context.queryClient.ensureQueryData(categoryOptionsQuery),
+      context.queryClient.ensureQueryData(
+        orpc.categories.getCategoryOptions.queryOptions(),
+      ),
     ]),
   component: CategoriesPage,
 })
@@ -110,10 +89,20 @@ export const Route = createFileRoute('/dashboard/categories/')({
 function CategoriesPage() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  const queryClient = useQueryClient()
-  const { data, isPlaceholderData } = useQuery(categoriesQuery(search))
-  const { data: categories, meta } = data!
-  const { data: options } = useSuspenseQuery(categoryOptionsQuery)
+  const { data: categories } = useSuspenseQuery(categoriesQuery(search))
+  const { data: options } = useSuspenseQuery(
+    orpc.categories.getCategoryOptions.queryOptions(),
+  )
+
+  const createMutation = useMutation(
+    orpc.categories.createCategory.mutationOptions(),
+  )
+  const updateMutation = useMutation(
+    orpc.categories.updateCategory.mutationOptions(),
+  )
+  const deleteMutation = useMutation(
+    orpc.categories.deleteCategory.mutationOptions(),
+  )
 
   const [formOpen, setFormOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -164,39 +153,35 @@ function CategoriesPage() {
 
   // Create / update handler
   const onSubmit = async (values: CategoryInputSchemaType) => {
-    const [error] = selected
-      ? await safeClient.categories.updateCategory({
-          id: selected.id,
-          ...values,
-        })
-      : await safeClient.categories.createCategory(values)
-    if (error) {
+    try {
+      if (selected) {
+        await updateMutation.mutateAsync({ id: selected.id, ...values })
+      } else {
+        await createMutation.mutateAsync(values)
+      }
+    } catch (error) {
       handleErrorResponse(error, form.setError)
       return
     }
     toast.success(selected ? 'Category updated' : 'Category created')
     setFormOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['categories'] })
-    queryClient.invalidateQueries({ queryKey: ['categoryOptions'] })
   }
 
   // Delete handler
   const handleDelete = async () => {
     if (!selected) return
-    const [error] = await safeClient.categories.deleteCategory({
-      id: selected.id,
-    })
-    if (error) {
+    try {
+      await deleteMutation.mutateAsync({ id: selected.id })
+    } catch (error) {
       handleErrorResponse(error)
       return
     }
-    toast.success('Category deleted')
+    toast.error('Category deleted')
     setDeleteOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['categoryOptions'] })
-    if (categories.length === 1 && meta.page > 1) {
-      navigate({ search: (prev) => ({ ...prev, page: meta.page - 1 }) })
-    } else {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    if (categories.data.length === 1 && categories.meta.page > 1) {
+      navigate({
+        search: (prev) => ({ ...prev, page: categories.meta.page - 1 }),
+      })
     }
   }
 
@@ -207,12 +192,12 @@ function CategoriesPage() {
       accessorKey: 'name',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="size-10 shrink-0 overflow-hidden rounded-md bg-secondary">
+          <div className="size-12 shrink-0 overflow-hidden rounded-md bg-secondary">
             {row.original.image && (
               <img
                 src={row.original.image.url}
                 alt=""
-                className="size-10 object-cover"
+                className="size-12 object-cover"
               />
             )}
           </div>
@@ -248,7 +233,7 @@ function CategoriesPage() {
           <DropdownItems>
             <DropdownItem>
               <button onClick={() => openEdit(row.original)}>
-                <Pencil className="icon" />
+                <Pencil />
                 <span>Edit</span>
               </button>
             </DropdownItem>
@@ -260,7 +245,7 @@ function CategoriesPage() {
                   setDeleteOpen(true)
                 }}
               >
-                <Trash2 className="icon" />
+                <Trash2 />
                 <span>Delete</span>
               </button>
             </DropdownItem>
@@ -273,15 +258,7 @@ function CategoriesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/dashboard"
-            className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
-          >
-            <ArrowLeft />
-          </Link>
-          <h1 className="text-2xl font-medium">Categories</h1>
-        </div>
+        <h1 className="text-2xl font-medium">Categories</h1>
         <Button onClick={openCreate}>
           <Plus />
           <span>Add Category</span>
@@ -290,7 +267,7 @@ function CategoriesPage() {
 
       <div className="rounded-xl border bg-card pb-6">
         <div className="flex items-center justify-between gap-4 p-6">
-          <InputGroup className="max-w-xs">
+          <InputGroup className="max-w-sm">
             <InputGroupAddon>
               <Search />
             </InputGroupAddon>
@@ -303,30 +280,13 @@ function CategoriesPage() {
           </InputGroup>
         </div>
 
-        <div
-          className={cn(
-            'transition-opacity',
-            isPlaceholderData && 'pointer-events-none opacity-60',
-          )}
-        >
-          <DataTable
-            data={categories}
-            columns={columns}
-            emptyMessage="No categories yet"
-          />
-        </div>
-
-        <Pagination
-          meta={meta}
-          onPageChange={(page) =>
-            navigate({ search: (prev) => ({ ...prev, page }) })
-          }
-          onLimitChange={(limit) =>
-            navigate({
-              search: (prev) => ({ ...prev, limit, page: undefined }),
-            })
-          }
+        <DataTable
+          data={categories.data}
+          columns={columns}
+          emptyMessage="No categories found"
         />
+
+        <Pagination meta={categories.meta} {...paginationHandlers(navigate)} />
       </div>
 
       {/* Create / Edit dialog */}
@@ -345,6 +305,22 @@ function CategoriesPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off">
             <FieldSet disabled={form.formState.isSubmitting}>
               <FieldGroup>
+                <Field className="text-center">
+                  <FieldLabel>Category Image</FieldLabel>
+                  <FileUploader
+                    className="mx-auto"
+                    key={selected?.id ?? 'new'}
+                    fileTypes={['images']}
+                    collection="categories"
+                    maxSize={5 * 1000 * 1000}
+                    initialFiles={
+                      selected?.image ? [selected.image] : undefined
+                    }
+                    onUploadComplete={(r) => {
+                      form.setValue('imageMediaId', r.mediaId)
+                    }}
+                  />
+                </Field>
                 <Controller
                   name="name"
                   control={form.control}
@@ -357,7 +333,9 @@ function CategoriesPage() {
                         {...field}
                         onChange={(e) => {
                           field.onChange(e)
-                          form.setValue('slug', slugify(e.target.value))
+                          form.setValue('slug', slugify(e.target.value), {
+                            shouldValidate: true,
+                          })
                         }}
                       />
                       <FieldError errors={[fieldState.error]} />
@@ -385,18 +363,22 @@ function CategoriesPage() {
                   control={form.control}
                   render={({ field }) => (
                     <Field>
-                      <FieldLabel>Parent</FieldLabel>
+                      <FieldLabel>Parent Category</FieldLabel>
                       <Select
-                        value={field.value ?? 'none'}
-                        onValueChange={(v) =>
-                          field.onChange(!v || v === 'none' ? undefined : v)
-                        }
+                        value={field.value ?? null}
+                        onValueChange={(v) => field.onChange(v ?? undefined)}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Category" />
+                        <SelectTrigger>
+                          <SelectValue>
+                            {(value: string | null) =>
+                              value
+                                ? options.find((c) => c.id === value)?.name
+                                : 'None'
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value={null}>None</SelectItem>
                           {options
                             .filter((c) => c.id !== selected?.id)
                             .map((c) => (
@@ -423,23 +405,8 @@ function CategoriesPage() {
                     </Field>
                   )}
                 />
-                <Field>
-                  <FieldLabel>Image</FieldLabel>
-                  <FileUploader
-                    key={selected?.id ?? 'new'}
-                    fileTypes={['images']}
-                    collection="categories"
-                    maxSize={5 * 1024 * 1024}
-                    initialFiles={
-                      selected?.image ? [selected.image] : undefined
-                    }
-                    onUploadComplete={(r) => {
-                      form.setValue('imageMediaId', r.mediaId)
-                    }}
-                  />
-                </Field>
               </FieldGroup>
-              <DialogFooter className="mt-6">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
@@ -470,8 +437,15 @@ function CategoriesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDelete}>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              isLoading={deleteMutation.isPending}
+              disabled={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

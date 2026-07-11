@@ -109,9 +109,13 @@ Client side, route **every** mutation error through one helper —
 omit it (e.g. a list-row delete) and everything becomes a toast.
 
 ```ts
-const [error] = await safeClient.foo.createFoo(values)
-if (error) return handleErrorResponse(error, form.setError) // form: inline + toast
-// non-form:  if (error) return handleErrorResponse(error)   // toast only
+const mutation = useMutation(orpc.foo.createFoo.mutationOptions())
+try {
+  await mutation.mutateAsync(values)
+} catch (error) {
+  return handleErrorResponse(error, form.setError) // form: inline + toast
+}
+// non-form: catch (error) { return handleErrorResponse(error) }   // toast only
 ```
 
 ## Pagination
@@ -122,20 +126,20 @@ which wraps to `{ data: T[], meta: { page, limit, total } }`. `getPaginationQuer
 (`src/lib/pagination.ts`) turns params into `{ skip, take, page, limit }`. A list
 filter schema spreads pagination: `{ search?, ...paginationSchema.shape }`.
 
-## Data fetching (TanStack Query + Start)
+## Data fetching (oRPC + TanStack Query integration)
 
-Define `queryOptions` **inline in the route file** (no shared query-options
-module), keyed `[resource, filters]` so any search-param change swaps the key and
-auto-refetches. Loader prefetches with `ensureQueryData`. Mutate with
-`safeClient`, then `invalidateQueries`.
+`src/lib/orpc.ts` exports `orpc = createTanstackQueryUtils(client, {...})`
+(`@orpc/tanstack-query`). Never hand-write a `queryOptions({queryKey, queryFn})`
+wrapper — call `orpc.<resource>.<procedure>.queryOptions({ input })` directly;
+the key is derived automatically from the router path + input, so it's
+consistent everywhere the same procedure is used (no more re-declaring the same
+query in multiple files). A thin local function is still fine when a route
+reuses the same input shape in both its loader and component (see
+`articlesQuery` below) — it's just calling `.queryOptions()`, not building a key.
 
 ```ts
 const articlesQuery = (filters: ArticleFilterSchemaType) =>
-  queryOptions({
-    queryKey: ['articles', filters],
-    queryFn: () => client.articles.getArticles(filters),
-    placeholderData: keepPreviousData, // paginated lists only — see below
-  })
+  orpc.articles.getArticles.queryOptions({ input: filters })
 
 export const Route = createFileRoute('/dashboard/articles/')({
   validateSearch: (s) => articleFilterSchema.parse(s), // when the list is filterable via URL
@@ -144,15 +148,19 @@ export const Route = createFileRoute('/dashboard/articles/')({
     context.queryClient.ensureQueryData(articlesQuery(deps)),
   component: ArticlesPage,
 })
-// in component: const { data, isPlaceholderData } = useQuery(articlesQuery(search))
-//               const { data: rows, meta } = data! // loader guarantees it's cached
+// in component: const { data: articles } = useSuspenseQuery(articlesQuery(search))
+//               <DataTable data={articles.data} .../>
+//               <Pagination meta={articles.meta} {...paginationHandlers(navigate)} />
 ```
 
-- **Paginated lists use `useQuery` + `placeholderData: keepPreviousData`** — the current rows stay on screen while the next page loads instead of flashing blank (`useSuspenseQuery` can't keep previous data: it re-suspends on every key change). Dim the table with `isPlaceholderData` (`cn('transition-opacity', isPlaceholderData && 'pointer-events-none opacity-60')`). Stable single reads (a detail page, a select's option list) can still use `useSuspenseQuery`.
-- `client` throws; `safeClient` returns `[error, data]`. Use `safeClient` for mutations and route the error through `handleErrorResponse` (see oRPC procedures → Errors).
+- **Every list read — paginated or not — uses `useSuspenseQuery`.** The loader already `ensureQueryData`s before the route commits, and no route in this app configures a `pendingComponent`, so a same-route search/page change blocks silently (the old page just stays put) until the loader resolves — by the time the component re-renders with new params, the data's already cached. So `useSuspenseQuery` never visibly re-suspends here: no `placeholderData`/`isPlaceholderData` dimming needed, and no `data!`/`isSuccess` narrowing guard either — `data` comes back guaranteed.
+- **Wire `<Pagination>` with `paginationHandlers(navigate)`** (`src/lib/pagination.ts`) instead of writing `onPageChange`/`onLimitChange` inline: `<Pagination meta={x.meta} {...paginationHandlers(navigate)} />`.
+- **Mutate with `useMutation(orpc.<resource>.<procedure>.mutationOptions())`**, then `await mutation.mutateAsync(values)` wrapped in try/catch — the catch routes the error through `handleErrorResponse` (see oRPC procedures → Errors) and the try-block continues with UI-only effects (toast, close dialog, navigate). Never `safeClient` — it doesn't exist; `useMutation`'s own throw/catch is the non-throwing boundary now.
+- **Cache invalidation is centralized, not per-component.** `src/lib/orpc.ts`'s `experimental_defaults` wires every `create`/`update`/`delete` procedure under a resource to invalidate that whole resource's query group on success (`createGeneralUtils([resource]).key()` partial-matches every procedure under it, including an options-list like `getCategoryOptions`). Components never call `invalidateQueries` themselves — adding a new mutation just means adding one line to that resource's block in `orpc.ts`.
 - Search: debounce with `useDebounceCallback(fn, 600)` and `navigate({ search })`, resetting `page` to `undefined`.
-- After delete on a list: if it was the last row on a page > 1, navigate back a page; else `invalidateQueries`.
-- **Full list for a `<Select>`/combobox:** never reuse the table's URL-driven key or a `{ limit: 100 }` hack (it collides and is capped). Add a dedicated **unpaginated** procedure returning a slim shape (`getCategoryOptions` → `{ id, name }[]`) and give it its own resource key (`['categoryOptions']`) — invalidate it alongside the resource on mutations.
+- After delete on a list: if it was the last row on a page > 1, navigate back a page — the resource invalidation (and thus the refetch) already happened via the mutation's default `onSuccess`.
+- **Delete confirmations** tie `AlertDialogAction`'s `isLoading`/`disabled` and `AlertDialogCancel`'s `disabled` to the delete mutation's `isPending` — same loading feel as the create/edit form's `FieldSet disabled={form.formState.isSubmitting}`, just wired explicitly since the alert dialog's buttons aren't in a fieldset.
+- **Full list for a `<Select>`/combobox:** never reuse the table's URL-driven key or a `{ limit: 100 }` hack (it collides and is capped). Add a dedicated **unpaginated** procedure returning a slim shape (`getCategoryOptions` → `{ id, name }[]`) — call `orpc.categories.getCategoryOptions.queryOptions()` directly wherever it's needed; it shares one auto-generated key everywhere, and is invalidated for free alongside the rest of `categories.*`.
 
 ## Dashboard pages
 
@@ -184,7 +192,7 @@ title; list pages: title + primary action.
 
 **List = table card** with this exact structure: a `rounded-xl border bg-card`
 wrapper → optional search row (`p-6`) → `<DataTable columns data emptyMessage />`
-→ `<Pagination meta onPageChange onLimitChange />`. Columns are
+→ `<Pagination meta {...paginationHandlers(navigate)} />`. Columns are
 `ColumnDef<T>[]`; the last column is an actions `Dropdown`.
 
 **CRUD location — decide by form size, not preference.** When a new
@@ -246,7 +254,7 @@ is an alias of it — never redeclare those fields anywhere.
 <FileUploader
   collection="thumbnail" // slot name (matches the backend COLLECTION)
   fileTypes={['images']}
-  maxSize={5 * 1024 * 1024}
+  maxSize={5 * 1000 * 1000} // decimal MB — matches formatBytes' base-1000 display
   initialFiles={article.thumbnail ? [article.thumbnail] : undefined} // edit pages
   onUploadComplete={(r) => form.setValue('thumbnailMediaId', r.mediaId)}
 />

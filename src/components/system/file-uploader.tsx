@@ -28,7 +28,7 @@ import {
 } from 'react-dropzone'
 import { ulid } from 'ulid'
 
-// --- Types ---
+// Types
 
 export type FileType = 'images' | 'docs' | 'videos' | 'audios'
 type FileStatus = 'pending' | 'uploading' | 'complete' | 'error' | 'cancelled'
@@ -75,7 +75,7 @@ export interface FileUploaderProps {
   disabled?: boolean
 }
 
-// --- File type config ---
+// File type config
 const FILE_TYPE_CONFIG: Record<
   FileType,
   { accept: Accept; icon: React.ElementType }
@@ -122,7 +122,7 @@ function resolveDropzoneIcon(fileTypes?: FileType[]): React.ElementType {
   return UploadCloud
 }
 
-// --- Helpers ---
+// Helpers
 function friendlyError(error: FileError): string {
   switch (error.code) {
     case ErrorCode.FileInvalidType:
@@ -241,7 +241,7 @@ function handleDropzoneError(err: Error) {
   console.error('[FileUploader]', err.message)
 }
 
-// --- Rounded progress ring shown over an uploading tile ---
+// Rounded progress ring shown over an uploading tile
 function CircularProgress({ value }: { value: number }) {
   const radius = 40
   const circumference = 2 * Math.PI * radius
@@ -278,7 +278,7 @@ function CircularProgress({ value }: { value: number }) {
   )
 }
 
-// --- Shared tile pieces ---
+// Shared tile pieces
 
 // Red close badge anchored to the outer top-right corner (white X / spinner).
 function RemoveButton({
@@ -314,7 +314,9 @@ function BusyOverlay({ value }: { value: number }) {
   )
 }
 
-// --- Single-file preview — fills the parent width, image keeps its ratio ---
+// Single-file preview — fills the parent's height when it's constrained
+// (object-cover crops instead of overflowing); keeps its natural aspect
+// ratio when the parent height is left flexible.
 const SinglePreview = React.memo(function SinglePreview({
   entry,
   onRemove,
@@ -327,10 +329,10 @@ const SinglePreview = React.memo(function SinglePreview({
   const isBusy = entry.status === 'uploading' || entry.status === 'pending'
 
   return (
-    <div className="relative w-full">
-      <div className="relative w-full overflow-hidden rounded-lg border-2 border-dashed border-input bg-secondary/40">
+    <div className="relative h-56 w-full">
+      <div className="relative size-full overflow-hidden rounded-lg border-2 border-dashed border-input bg-secondary/40">
         {isError ? (
-          <div className="flex min-h-40 flex-col items-center justify-center gap-1.5 p-4 text-center">
+          <div className="flex h-40 flex-col items-center justify-center gap-1.5 p-4 text-center">
             <AlertTriangle
               className="size-6 text-destructive-foreground"
               strokeWidth={1.5}
@@ -340,7 +342,11 @@ const SinglePreview = React.memo(function SinglePreview({
             </span>
           </div>
         ) : entry.preview ? (
-          <img src={entry.preview} alt={entry.name} className="block w-full" />
+          <img
+            src={entry.preview}
+            alt={entry.name}
+            className="block size-full object-cover"
+          />
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-center">
             <Icon className="size-9 text-muted-foreground" strokeWidth={1.5} />
@@ -356,7 +362,7 @@ const SinglePreview = React.memo(function SinglePreview({
   )
 })
 
-// --- Multi-file tile — square, dashed border to match the dropzone ---
+// Multi-file tile — square, dashed border to match the dropzone
 const FileTile = React.memo(function FileTile({
   entry,
   onRemove,
@@ -402,7 +408,7 @@ const FileTile = React.memo(function FileTile({
   )
 })
 
-// --- FileUploader ---
+// FileUploader
 export function FileUploader({
   fileTypes,
   accept: acceptProp,
@@ -631,7 +637,7 @@ export function FileUploader({
     <div
       {...getRootProps({ 'aria-labelledby': label ? labelId : undefined })}
       className={cn(
-        'group relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-input bg-background px-6 py-10 text-center transition-all duration-200 outline-none select-none',
+        'group relative flex h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-input bg-background px-6 py-10 text-center transition-all duration-200 outline-none select-none',
         // Idle hover
         'hover:border-primary/50 hover:bg-muted',
         // Keyboard focus only
@@ -701,7 +707,7 @@ export function FileUploader({
           </span>
         </p>
         {autoDescription && (
-          <p className="text-xs text-muted-foreground">{autoDescription}</p>
+          <p className="text-xs text-muted-foreground leading-5">{autoDescription}</p>
         )}
       </div>
     </div>

@@ -39,7 +39,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-md border-2 border-input bg-background px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none select-none focus-visible:border-primary focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive! data-placeholder:text-muted-foreground data-[size=default]:h-10 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex w-full items-center justify-between gap-1.5 rounded-md border-2 border-input bg-background px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none select-none focus-visible:border-primary focus-visible:outline-hidden disabled:pointer-events-none disabled:bg-muted aria-invalid:border-destructive! data-placeholder:text-muted-foreground data-[size=default]:h-10 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -128,7 +128,7 @@ function SelectItem({
       <SelectPrimitive.ItemIndicator
         render={
           <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
-            <CheckIcon className="pointer-events-none" />
+            <CheckIcon className="pointer-events-none size-4" />
           </span>
         }
       />

@@ -21,7 +21,7 @@ const worker = new Worker(
 worker.on('ready', () => console.log('[email] worker ready'))
 worker.on('error', (err) => console.error('[email] error:', err.message))
 worker.on('failed', (job, err) =>
-  console.error(`[email] ${job?.name} (${job?.id}) failed:`, err.message),
+  console.error(`[email] ${job?.name} (job id#${job?.id}) failed:`, err.message),
 )
 
 export default worker

@@ -17,13 +17,13 @@ function ComboboxChips({
       <ComboboxPrimitive.Chips
         data-slot="combobox-chips"
         className={cn(
-          'relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border-2 border-input bg-background px-2 py-1.5 pr-8 text-sm transition-[color,box-shadow] focus-within:border-primary has-disabled:opacity-50 has-aria-invalid:border-destructive!',
+          'relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm transition-[color,box-shadow] focus-within:border-primary has-disabled:opacity-50 has-aria-invalid:border-destructive!',
           className,
         )}
         {...props}
       >
         {children}
-        <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground">
           <ChevronDown className="size-5 stroke-[1.5]" />
         </span>
       </ComboboxPrimitive.Chips>
@@ -113,7 +113,7 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           className={cn(
-            'relative z-50 max-h-(--available-height) min-w-(--anchor-width) origin-(--transform-origin) overflow-y-auto rounded-md border bg-white p-1.5 text-foreground shadow-lg duration-150 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-transparent dark:bg-secondary',
+            'relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) origin-(--transform-origin) overflow-y-auto rounded-md border bg-white p-1.5 text-foreground shadow-lg duration-150 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-transparent dark:bg-secondary',
             className,
           )}
           {...props}

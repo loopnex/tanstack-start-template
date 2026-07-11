@@ -24,19 +24,15 @@ import {
 } from '#/components/ui/input-group'
 import { Pagination } from '#/components/ui/pagination'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { client, safeClient } from '#/lib/orpc'
+import { orpc } from '#/lib/orpc'
+import { paginationHandlers } from '#/lib/pagination'
 import { cn, formatDateTime } from '#/lib/utils'
 import {
   articleFilterSchema,
   type ArticleFilterSchemaType,
   type ArticleSchemaType,
 } from '#/schema/articleSchema'
-import {
-  keepPreviousData,
-  queryOptions,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
@@ -44,13 +40,9 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
 
+// Paginated query for the table (filters come from URL)
 const articlesQuery = (filters: ArticleFilterSchemaType) =>
-  queryOptions({
-    queryKey: ['articles', filters] as const,
-    queryFn: () => client.articles.getArticles(filters),
-    // Keep the current rows on screen while the next page loads (no blank flash)
-    placeholderData: keepPreviousData,
-  })
+  orpc.articles.getArticles.queryOptions({ input: filters })
 
 export const Route = createFileRoute('/dashboard/articles/')({
   validateSearch: (search) => articleFilterSchema.parse(search),
@@ -63,10 +55,10 @@ export const Route = createFileRoute('/dashboard/articles/')({
 function ArticlesPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const queryClient = useQueryClient()
-  // loader guarantees the data is cached; keepPreviousData keeps it across changes
-  const { data, isPlaceholderData } = useQuery(articlesQuery(search))
-  const { data: articles, meta } = data!
+  const { data: articles } = useSuspenseQuery(articlesQuery(search))
+  const deleteMutation = useMutation(
+    orpc.articles.deleteArticle.mutationOptions(),
+  )
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selected, setSelected] = useState<ArticleSchemaType | null>(null)
@@ -85,18 +77,17 @@ function ArticlesPage() {
   // Delete handler
   const handleDelete = async () => {
     if (!selected) return
-    const [error] = await safeClient.articles.deleteArticle({ id: selected.id })
-    if (error) {
+    try {
+      await deleteMutation.mutateAsync({ id: selected.id })
+    } catch (error) {
       handleErrorResponse(error)
       return
     }
     toast.success('Article deleted')
     setDeleteOpen(false)
     const currentPage = search.page ?? 1
-    if (articles.length === 1 && currentPage > 1) {
+    if (articles.data.length === 1 && currentPage > 1) {
       navigate({ search: (prev) => ({ ...prev, page: currentPage - 1 }) })
-    } else {
-      queryClient.invalidateQueries({ queryKey: ['articles'] })
     }
   }
 
@@ -192,7 +183,7 @@ function ArticlesPage() {
 
       <div className="rounded-xl border bg-card pb-6">
         <div className="flex items-center justify-between gap-4 p-6">
-          <InputGroup className="max-w-xs">
+          <InputGroup className="max-w-sm">
             <InputGroupAddon>
               <Search />
             </InputGroupAddon>
@@ -205,30 +196,13 @@ function ArticlesPage() {
           </InputGroup>
         </div>
 
-        <div
-          className={cn(
-            'transition-opacity',
-            isPlaceholderData && 'pointer-events-none opacity-60',
-          )}
-        >
-          <DataTable
-            data={articles}
-            columns={columns}
-            emptyMessage="No articles found"
-          />
-        </div>
-
-        <Pagination
-          meta={meta}
-          onPageChange={(page) =>
-            navigate({ search: (prev) => ({ ...prev, page }) })
-          }
-          onLimitChange={(limit) =>
-            navigate({
-              search: (prev) => ({ ...prev, limit, page: undefined }),
-            })
-          }
+        <DataTable
+          data={articles.data}
+          columns={columns}
+          emptyMessage="No articles found"
         />
+
+        <Pagination meta={articles.meta} {...paginationHandlers(navigate)} />
       </div>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -244,8 +218,15 @@ function ArticlesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDelete}>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              isLoading={deleteMutation.isPending}
+              disabled={deleteMutation.isPending}
+              onClick={handleDelete}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

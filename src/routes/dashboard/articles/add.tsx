@@ -1,36 +1,37 @@
 import { buttonVariants } from '#/components/ui/button'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { client, safeClient } from '#/lib/orpc'
+import { orpc } from '#/lib/orpc'
 import { cn } from '#/lib/utils'
 import type { ArticleInputSchemaType } from '#/schema/articleSchema'
-import { queryOptions } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
 import { toast } from 'sonner'
 import { ArticleForm } from './-components/article-form'
 
-const categoryOptionsQuery = queryOptions({
-  queryKey: ['categoryOptions'] as const,
-  queryFn: () => client.categories.getCategoryOptions(),
-})
-
 export const Route = createFileRoute('/dashboard/articles/add')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(categoryOptionsQuery),
+    context.queryClient.ensureQueryData(
+      orpc.categories.getCategoryOptions.queryOptions(),
+    ),
   component: AddArticlePage,
 })
 
 function AddArticlePage() {
   const navigate = Route.useNavigate()
+  const createMutation = useMutation(
+    orpc.articles.createArticle.mutationOptions(),
+  )
 
   // Create handler
   const onSubmit = async (
     values: ArticleInputSchemaType,
     setError: UseFormReturn<ArticleInputSchemaType>['setError'],
   ) => {
-    const [error] = await safeClient.articles.createArticle(values)
-    if (error) {
+    try {
+      await createMutation.mutateAsync(values)
+    } catch (error) {
       handleErrorResponse(error, setError)
       return
     }

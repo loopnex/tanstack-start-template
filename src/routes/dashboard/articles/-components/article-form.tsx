@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
-import { client } from '#/lib/orpc'
+import { orpc } from '#/lib/orpc'
 import {
   ARTICLE_STATUS,
   articleInputSchema,
@@ -40,13 +40,8 @@ import {
 import type { CategoryOptionSchemaType } from '#/schema/categorySchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import slugify from '@sindresorhus/slugify'
-import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Controller, useForm, type UseFormReturn } from 'react-hook-form'
-
-const categoryOptionsQuery = queryOptions({
-  queryKey: ['categoryOptions'] as const,
-  queryFn: () => client.categories.getCategoryOptions(),
-})
 
 interface ArticleFormProps {
   defaultValues: ArticleInputSchemaType
@@ -64,7 +59,9 @@ export function ArticleForm({
   submitLabel,
   onSubmit,
 }: ArticleFormProps) {
-  const { data: categories } = useSuspenseQuery(categoryOptionsQuery)
+  const { data: categories } = useSuspenseQuery(
+    orpc.categories.getCategoryOptions.queryOptions(),
+  )
   const form = useForm<ArticleInputSchemaType>({
     resolver: zodResolver(articleInputSchema),
     defaultValues,
@@ -97,7 +94,9 @@ export function ArticleForm({
                           {...field}
                           onChange={(e) => {
                             field.onChange(e)
-                            form.setValue('slug', slugify(e.target.value))
+                            form.setValue('slug', slugify(e.target.value), {
+                              shouldValidate: true,
+                            })
                           }}
                         />
                         <FieldError errors={[fieldState.error]} />

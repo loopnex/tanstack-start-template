@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default:
           'bg-primary text-primary-foreground hover:bg-primary/85 focus-visible:ring-primary/30',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/85 focus-visible:ring-destructive/30',
+          'bg-destructive text-destructive-foreground hover:bg-destructive/85 focus-visible:ring-destructive-foreground/30',
         outline:
           'border-input bg-background hover:bg-secondary hover:text-secondary-foreground focus-visible:ring-foreground/20',
         secondary:
@@ -20,11 +20,11 @@ const buttonVariants = cva(
         ghost:
           'hover:bg-secondary hover:text-secondary-foreground focus-visible:ring-foreground/20',
         link: 'text-primary underline-offset-4 hover:underline',
-        info: 'bg-info text-info-foreground hover:bg-info/85 focus-visible:ring-info/30',
+        info: 'bg-info text-info-foreground hover:bg-info/85 focus-visible:ring-info-foreground/30',
         success:
-          'bg-success text-success-foreground hover:bg-success/85 focus-visible:ring-success/30',
+          'bg-success text-success-foreground hover:bg-success/85 focus-visible:ring-success-foreground/30',
         warning:
-          'bg-warning text-warning-foreground hover:bg-warning/85 focus-visible:ring-warning/30',
+          'bg-warning text-warning-foreground hover:bg-warning/85 focus-visible:ring-warning-foreground/30',
       },
       size: {
         default: 'h-10 px-3.5 py-2',
