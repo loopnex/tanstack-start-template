@@ -64,7 +64,7 @@ function ComboboxChipsInput({
     <ComboboxPrimitive.Input
       data-slot="combobox-chips-input"
       className={cn(
-        'min-w-24 flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground',
+        'min-w-24 flex-1 bg-transparent text-sm outline-hidden placeholder:font-medium placeholder:text-muted-foreground',
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ function ComboboxInput({ className, ...props }: ComboboxPrimitive.Input.Props) {
       <ComboboxPrimitive.Input
         data-slot="combobox-input"
         className={cn(
-          'h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm outline-hidden transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-primary disabled:opacity-50 aria-invalid:border-destructive!',
+          'h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm outline-hidden transition-[color,box-shadow] placeholder:font-medium placeholder:text-muted-foreground focus-visible:border-primary disabled:opacity-50 aria-invalid:border-destructive!',
           className,
         )}
         {...props}

@@ -16,6 +16,7 @@ import { Route as mainIndexRouteImport } from './routes/(main)/index'
 import { Route as FilesSplatRouteImport } from './routes/files/$'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as mainAuthRouteRouteImport } from './routes/(main)/auth/route'
+import { Route as DashboardUsersIndexRouteImport } from './routes/dashboard/users/index'
 import { Route as DashboardCategoriesIndexRouteImport } from './routes/dashboard/categories/index'
 import { Route as DashboardArticlesIndexRouteImport } from './routes/dashboard/articles/index'
 import { Route as DashboardArticlesAddRouteImport } from './routes/dashboard/articles/add'
@@ -62,6 +63,11 @@ const mainAuthRouteRoute = mainAuthRouteRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => mainRouteRoute,
+} as any)
+const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardCategoriesIndexRoute =
   DashboardCategoriesIndexRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/articles/add': typeof DashboardArticlesAddRoute
   '/dashboard/articles/': typeof DashboardArticlesIndexRoute
   '/dashboard/categories/': typeof DashboardCategoriesIndexRoute
+  '/dashboard/users/': typeof DashboardUsersIndexRoute
   '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRoutesByTo {
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/dashboard/articles/add': typeof DashboardArticlesAddRoute
   '/dashboard/articles': typeof DashboardArticlesIndexRoute
   '/dashboard/categories': typeof DashboardCategoriesIndexRoute
+  '/dashboard/users': typeof DashboardUsersIndexRoute
   '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRoutesById {
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/dashboard/articles/add': typeof DashboardArticlesAddRoute
   '/dashboard/articles/': typeof DashboardArticlesIndexRoute
   '/dashboard/categories/': typeof DashboardCategoriesIndexRoute
+  '/dashboard/users/': typeof DashboardUsersIndexRoute
   '/dashboard/articles/edit/$id': typeof DashboardArticlesEditIdRoute
 }
 export interface FileRouteTypes {
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/dashboard/articles/add'
     | '/dashboard/articles/'
     | '/dashboard/categories/'
+    | '/dashboard/users/'
     | '/dashboard/articles/edit/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/dashboard/articles/add'
     | '/dashboard/articles'
     | '/dashboard/categories'
+    | '/dashboard/users'
     | '/dashboard/articles/edit/$id'
   id:
     | '__root__'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/dashboard/articles/add'
     | '/dashboard/articles/'
     | '/dashboard/categories/'
+    | '/dashboard/users/'
     | '/dashboard/articles/edit/$id'
   fileRoutesById: FileRoutesById
 }
@@ -310,6 +322,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof mainAuthRouteRouteImport
       parentRoute: typeof mainRouteRoute
+    }
+    '/dashboard/users/': {
+      id: '/dashboard/users/'
+      path: '/users'
+      fullPath: '/dashboard/users/'
+      preLoaderRoute: typeof DashboardUsersIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/categories/': {
       id: '/dashboard/categories/'
@@ -436,6 +455,7 @@ interface DashboardRouteRouteChildren {
   DashboardArticlesAddRoute: typeof DashboardArticlesAddRoute
   DashboardArticlesIndexRoute: typeof DashboardArticlesIndexRoute
   DashboardCategoriesIndexRoute: typeof DashboardCategoriesIndexRoute
+  DashboardUsersIndexRoute: typeof DashboardUsersIndexRoute
   DashboardArticlesEditIdRoute: typeof DashboardArticlesEditIdRoute
 }
 
@@ -445,6 +465,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardArticlesAddRoute: DashboardArticlesAddRoute,
   DashboardArticlesIndexRoute: DashboardArticlesIndexRoute,
   DashboardCategoriesIndexRoute: DashboardCategoriesIndexRoute,
+  DashboardUsersIndexRoute: DashboardUsersIndexRoute,
   DashboardArticlesEditIdRoute: DashboardArticlesEditIdRoute,
 }
 

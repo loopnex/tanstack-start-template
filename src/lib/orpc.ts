@@ -40,7 +40,9 @@ export const client: RouterClient<typeof router> = getORPCClient()
 // Every create/update/delete under a resource invalidates that resource's whole
 // query group on success (e.g. `categories.*` covers getCategoryOptions too, since
 // oRPC's generated keys are path-prefixed) — components never call invalidateQueries.
-const invalidateOnSuccess = (resource: 'articles' | 'categories') => ({
+const invalidateOnSuccess = (
+  resource: 'articles' | 'categories' | 'users',
+) => ({
   mutationOptions: {
     onSuccess: (
       _data: unknown,
@@ -68,6 +70,12 @@ export const orpc = createTanstackQueryUtils(client, {
       createCategory: invalidateOnSuccess('categories'),
       updateCategory: invalidateOnSuccess('categories'),
       deleteCategory: invalidateOnSuccess('categories'),
+    },
+    users: {
+      createUser: invalidateOnSuccess('users'),
+      updateUser: invalidateOnSuccess('users'),
+      banUser: invalidateOnSuccess('users'),
+      deleteUser: invalidateOnSuccess('users'),
     },
   },
 })

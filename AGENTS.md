@@ -32,6 +32,29 @@ an S3 client living in-process are all fine).
 - `node node_modules/typescript/bin/tsc --noEmit` — typecheck (run after changes).
 - `pnpm check` — prettier + eslint --fix.
 
+## Comments
+
+One line, to the point — what the code does, not why it exists or how it
+compares to alternatives. If it genuinely needs more than one line, that's a
+sign it belongs in a JSDoc block, not a longer inline comment.
+
+```ts
+// Auto-generated slug, read-only
+<Input id="slug" disabled />
+
+// ✗ never — a paragraph explaining a design decision as an inline comment
+// Create and edit share this form but need different required fields
+// (password only on create) — one schema keeps a single inferred type
+// instead of two mismatched ones, since react-hook-form needs...
+const userFormSchema = (mode: 'create' | 'edit') => ...
+
+// ✓ short inline, or reach for JSDoc if it truly needs the room
+/**
+ * One schema for create+edit — password is only required in 'create' mode.
+ */
+const userFormSchema = (mode: 'create' | 'edit') => ...
+```
+
 ## oRPC procedures
 
 One file per resource in `src/orpc/<resource>.ts`. Builders live in
@@ -46,10 +69,11 @@ each method file reads top-to-bottom as `getX → getXs → createX → updateX 
 deleteX`. **Prefix every procedure with a one-line comment** so methods are easy
 to scan in a big file: `// Get Articles (Paginated)`, `// Create Article`, etc.
 
-- **Builder = auth boundary.** Use `authorized` for anything needing a logged-in user (`context.user`/`context.session`); use `os` only for genuinely public endpoints. No RBAC exists — `authorized` just proves a session.
+- **Builder = auth boundary.** Use `authorized` for anything needing a logged-in user (`context.user`/`context.session`); use `os` only for genuinely public endpoints. There's no general RBAC — the one exception is `adminOnly` (`src/orpc/index.ts`), which extends `authorized` with a single `context.user.role === 'admin'` check, used only by user management (`src/orpc/users.ts`). Don't reach for a broader permission system without a real second use case.
 - **`.route()` is mandatory (OpenAPI).** `{ method, path, summary, tags }` with REST-ish paths — collection `/articles`, item `/articles/{id}`. `tags` groups the resource in `/api/docs`.
 - **`.input()` / `.output()` are always zod schemas** from `src/schema`. The output schema is the public contract — keep it exact. Single-arg item ops inline `z.object({ id: z.string() })`; update spreads `{ id, ...inputSchema.shape }`.
 - **Naming:** verb-first, resource-suffixed — `getArticles`, `getArticle`, `createArticle`, `updateArticle`, `deleteArticle`. **Export** grouped: `export const articles = { getArticles, ... }`. Never `articlesRouter`.
+- **One action, one procedure.** If a resource needs a second write behavior that isn't a plain field edit (e.g. banning/suspending, publishing), give it its own procedure and its own confirm UI — don't fold it into `updateX` just because it's the same resource (see `users.updateUser` vs `users.banUser`).
 
 ### Response shape (match the output schema exactly)
 
@@ -59,6 +83,7 @@ to scan in a big file: `// Get Articles (Paginated)`, `// Create Article`, etc.
 - Slugs: always `slugify()` on the server regardless of client input.
 - Multi-table writes use `db.transaction`; independent reads use `Promise.all`.
 - **Reads that need related rows use the Drizzle relational API** — `db.query.articles.findFirst({ where, with: { categories: { columns: { categoryId: true } } } })` — not a hand-written join. The exception is **media**: it's polymorphic (no FK relation), so resolve it through `mediaService` (`findOne`/`findForIds`). The relational API is read-only — join-table writes (insert/delete into `article_categories`) stay explicit inside the transaction.
+- **A table owned by another library still reads through plain Drizzle** (e.g. `users`, managed by better-auth) — same as any other resource. But route its _privileged writes_ through that library's own API (e.g. `auth.api.setRole`/`banUser`/`createUser` instead of a raw insert/update) — it carries write-side invariants (password hashing, session/account cleanup) a bypassed SQL write would silently break.
 
 ```ts
 // Get Articles (Paginated)
@@ -312,5 +337,5 @@ Workers are bootstrapped by the import `#/lib/workers` at the top of
 ## Security / safety defaults
 
 - `.env` is gitignored — never commit secrets.
-- No role/permission checks exist yet; `authorized` only proves a session. Don't assume RBAC.
+- No general role/permission checks exist; `authorized` only proves a session. The only exception is `adminOnly` (see oRPC procedures → Builder = auth boundary). Don't assume RBAC beyond that one case.
 - Trust storage/server over the client for sizes, types, and slugs.

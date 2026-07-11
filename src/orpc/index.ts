@@ -22,3 +22,9 @@ const authMiddleware = os.middleware(async ({ context, next }) => {
 
 // Authenticated procedure builder — auth required
 export const authorized = os.use(authMiddleware)
+
+// Admin-only procedure builder — requires the admin role
+export const adminOnly = authorized.use(async ({ context, next }) => {
+  if (context.user.role !== 'admin') throw new ORPCError('FORBIDDEN')
+  return next()
+})

@@ -6,9 +6,10 @@ import {
   pgTable,
   primaryKey,
   text,
-  timestamp,
-  type AnyPgColumn,
+  timestamp
+  
 } from 'drizzle-orm/pg-core'
+import type {AnyPgColumn} from 'drizzle-orm/pg-core';
 import { ulid } from 'ulid'
 
 const timestamps = {
@@ -27,7 +28,7 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
-  role: text('role'),
+  role: text('role').$type<'user' | 'admin'>(),
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),
   banExpires: timestamp('ban_expires'),

@@ -42,7 +42,7 @@ const DropdownItem = ({ children, ...props }: MenuItemProps<'button'>) => {
   return (
     <MenuItem
       className={cn(
-        'flex w-full items-center gap-2 rounded px-2.5 py-1.5 data-focus:bg-muted',
+        'flex w-full items-center gap-2 rounded px-2.5 py-1.5 data-disabled:pointer-events-none data-disabled:opacity-50 data-focus:bg-muted',
       )}
       {...props}
     >

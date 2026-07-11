@@ -66,11 +66,7 @@ export const menuGroups: MenuGroup[] = [
         id: 4,
         title: 'Users',
         icon: <UserRound className="icon" />,
-        baseUrl: '/dashboard/users',
-        submenu: [
-          { id: 1, title: 'All Users', url: '/dashboard/users' },
-          { id: 2, title: 'Add User', url: '/dashboard/users/add' },
-        ],
+        url: '/dashboard/users',
       },
     ],
   },
