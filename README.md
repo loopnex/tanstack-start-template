@@ -37,11 +37,8 @@ pnpm dev              # http://localhost:3000
 ```
 
 No environment setup — `.env.local` is committed and already points at the
-containers.
-
-> **Edited `docker-compose.yml`?** Run `docker compose up -d --force-recreate`.
-> A plain `services:up` can leave old containers running with the old config,
-> which shows up as a healthy service the app still can't reach.
+containers. After editing `docker-compose.yml`, run `pnpm services:up` again to
+apply it.
 
 ## What you get
 
@@ -137,9 +134,31 @@ src/routes/dashboard/articles/index.tsx   loader + useSuspenseQuery + DataTable
 ```
 
 The client is fully typed off the router — rename a field in the zod schema and
-the page stops compiling. Mutations invalidate their resource automatically via
-`experimental_defaults` in `src/lib/orpc.ts`, so components never call
-`invalidateQueries`.
+the page stops compiling.
+
+Reads and writes each follow one rule. Loaders call `ensureQueryData` from
+`#/lib/orpc`, which turns a `NOT_FOUND` into the real 404 page. Mutations use
+`mutate` with callbacks — never `mutateAsync`, never `try/catch` — and invalidate
+their resource where they're declared:
+
+```ts
+const invalidate = () =>
+  queryClient.invalidateQueries({ queryKey: orpc.articles.key() })
+
+const deleteMutation = useMutation(
+  orpc.articles.deleteArticle.mutationOptions({ onSuccess: invalidate }),
+)
+
+deleteMutation.mutate(
+  { id },
+  {
+    onSuccess: () => toast.success('Article deleted'),
+    onError: (error) => handleErrorResponse(error),
+  },
+)
+```
+
+Cache concerns sit on the declaration, UI concerns sit on the call.
 
 Background work is deliberately out of band: a procedure calls
 `emailQueue.add(...)` and returns; the worker in `src/lib/workers` sends the mail
@@ -152,11 +171,12 @@ inventing a shape. In order:
 
 1. **Table** — add it to `src/db/schema.ts`, then `pnpm db:generate && pnpm db:migrate`.
 2. **Schemas** — `src/schema/<name>Schema.ts`: output, input, and filter schemas.
-3. **Procedures** — `src/orpc/<name>.ts`, then add it to `src/orpc/router.ts`.
-4. **Cache** — add the create/update/delete entries in `src/lib/orpc.ts`.
-5. **Route** — `src/routes/dashboard/<name>/index.tsx`, with the standard header,
-   table card and pagination.
-6. `pnpm typecheck && pnpm check`.
+3. **Procedures** — `src/orpc/<name>.ts` reading `getXs → getX → createX →
+updateX → deleteX`, then add it to `src/orpc/router.ts`.
+4. **Route** — `src/routes/dashboard/<name>/index.tsx`, with the standard header,
+   table card and pagination. The loader uses `ensureQueryData`; each mutation
+   invalidates `orpc.<name>.key()` in its `mutationOptions`.
+5. `pnpm typecheck && pnpm check`.
 
 Form size decides the UI: ~4–5 fields → dialog on the list page; more, or file
 uploads → separate `add.tsx` and `edit/$id.tsx` sharing a form component.
