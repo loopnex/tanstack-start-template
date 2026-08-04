@@ -1,12 +1,24 @@
+import { useRouteContext } from '@tanstack/react-router'
 import MenuCollapsible from './menu-collapsible'
 import MenuCollapsibleItem from './menu-collapsible-item'
 import MenuItem from './menu-item'
 import { menuGroups } from './menu-list'
 
 const SidebarMenu = () => {
+  const { session } = useRouteContext({ from: '__root__' })
+  const isAdmin = session?.user.role === 'admin'
+
+  // Drop admin-only entries, then any group left empty
+  const groups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isAdmin || !item.adminOnly),
+    }))
+    .filter((group) => group.items.length > 0)
+
   return (
     <nav className="grow space-y-5 overflow-y-auto p-4">
-      {menuGroups.map((group) => (
+      {groups.map((group) => (
         <div key={group.label}>
           <p className="mb-2.5 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
             {group.label}

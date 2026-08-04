@@ -16,7 +16,34 @@ import { and, asc, eq, ilike, not, or } from 'drizzle-orm'
 import * as z from 'zod'
 
 const MODEL = 'category'
-const COLLECTION = 'categories'
+const COLLECTION = 'image'
+
+/**
+ * Rejects a parent that is the category itself or one of its descendants,
+ * by walking the ancestor chain to the root.
+ */
+async function assertNoCycle(id: string, parentId: string) {
+  if (parentId === id)
+    throw new ORPCError('CONFLICT', {
+      message: 'A category cannot be its own parent',
+    })
+
+  const seen = new Set([id])
+  let current: string | null = parentId
+  while (current) {
+    if (seen.has(current))
+      throw new ORPCError('CONFLICT', {
+        message: 'That parent would create a category loop',
+      })
+    seen.add(current)
+    const [row] = await db
+      .select({ parentId: categoriesTable.parentId })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, current))
+      .limit(1)
+    current = row?.parentId ?? null
+  }
+}
 
 // Get Categories (Paginated)
 const getCategories = authorized
@@ -77,6 +104,31 @@ const getCategoryOptions = authorized
       .orderBy(asc(categoriesTable.name))
   })
 
+// Get Category
+const getCategory = authorized
+  .route({
+    method: 'GET',
+    path: '/categories/{id}',
+    summary: 'Get a category',
+    tags: ['Categories'],
+  })
+  .input(z.object({ id: z.string() }))
+  .output(categorySchema)
+  .handler(async ({ input }) => {
+    const [category] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, input.id))
+      .limit(1)
+
+    if (!category)
+      throw new ORPCError('NOT_FOUND', { message: 'Category not found' })
+
+    const image = await mediaService.findOne(MODEL, category.id, COLLECTION)
+
+    return { ...category, image: image ? mediaService.toResult(image) : null }
+  })
+
 // Create Category
 const createCategory = authorized
   .route({
@@ -109,6 +161,11 @@ const createCategory = authorized
       })
       .returning()
 
+    if (!category)
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'Failed to create category',
+      })
+
     const img = await mediaService.sync(
       MODEL,
       category.id,
@@ -131,8 +188,7 @@ const updateCategory = authorized
   .handler(async ({ input }) => {
     const { id, imageMediaId, ...data } = input
     const slug = slugify(data.slug || data.name)
-    const parentId =
-      data.parentId && data.parentId !== id ? data.parentId : null
+    const parentId = data.parentId || null
 
     const [existing] = await db
       .select({ id: categoriesTable.id })
@@ -157,11 +213,18 @@ const updateCategory = authorized
     if (taken)
       throw new ORPCError('CONFLICT', { message: 'Name already taken' })
 
+    if (parentId) await assertNoCycle(id, parentId)
+
     const [category] = await db
       .update(categoriesTable)
       .set({ name: data.name, slug, description: data.description, parentId })
       .where(eq(categoriesTable.id, id))
       .returning()
+
+    if (!category)
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'Failed to update category',
+      })
 
     const img = await mediaService.sync(MODEL, id, COLLECTION, imageMediaId)
     return { ...category, image: img ? mediaService.toResult(img) : null }
@@ -182,6 +245,7 @@ const deleteCategory = authorized
       .select()
       .from(categoriesTable)
       .where(eq(categoriesTable.id, input.id))
+      .limit(1)
 
     if (!category)
       throw new ORPCError('NOT_FOUND', { message: 'Category not found' })
@@ -193,6 +257,7 @@ const deleteCategory = authorized
 
 export const categories = {
   getCategories,
+  getCategory,
   getCategoryOptions,
   createCategory,
   updateCategory,

@@ -5,10 +5,13 @@ import { ORPCError, os as baseOS } from '@orpc/server'
 export const os = baseOS.$context<{ headers: Headers }>()
 
 // Auth middleware — validates the session and adds user/session to context
+type Session = typeof auth.$Infer.Session | null
 const authMiddleware = os.middleware(async ({ context, next }) => {
-  const sessionData = await auth.api.getSession({ headers: context.headers })
+  const sessionData: Session = await auth.api.getSession({
+    headers: context.headers,
+  })
 
-  if (!sessionData?.session || !sessionData?.user) {
+  if (!sessionData?.session) {
     throw new ORPCError('UNAUTHORIZED')
   }
 

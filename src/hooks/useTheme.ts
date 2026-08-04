@@ -52,10 +52,10 @@ function subscribe(notify: () => void) {
 }
 
 export function useTheme(): { theme: Theme; setTheme: (theme: Theme) => void } {
-  const value = useSyncExternalStore(
+  const value = useSyncExternalStore<Theme>(
     subscribe,
     () => theme,
-    () => 'system' as Theme,
+    () => 'system',
   )
   return { theme: value, setTheme }
 }

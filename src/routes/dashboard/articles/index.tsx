@@ -24,18 +24,29 @@ import {
 } from '#/components/ui/input-group'
 import { Pagination } from '#/components/ui/pagination'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { orpc } from '#/lib/orpc'
+import { ensureQueryData, orpc } from '#/lib/orpc'
 import { paginationHandlers } from '#/lib/pagination'
 import { cn, formatDateTime } from '#/lib/utils'
-import {
-  articleFilterSchema,
-  type ArticleFilterSchemaType,
-  type ArticleSchemaType,
+import type {
+  ArticleFilterSchemaType,
+  ArticleSchemaType,
 } from '#/schema/articleSchema'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { articleFilterSchema } from '#/schema/articleSchema'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  EllipsisVertical,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
@@ -48,16 +59,20 @@ export const Route = createFileRoute('/dashboard/articles/')({
   validateSearch: (search) => articleFilterSchema.parse(search),
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(articlesQuery(deps)),
+    ensureQueryData(context.queryClient, articlesQuery(deps)),
   component: ArticlesPage,
 })
 
 function ArticlesPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const queryClient = useQueryClient()
   const { data: articles } = useSuspenseQuery(articlesQuery(search))
   const deleteMutation = useMutation(
-    orpc.articles.deleteArticle.mutationOptions(),
+    orpc.articles.deleteArticle.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: orpc.articles.key() }),
+    }),
   )
 
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -75,20 +90,22 @@ function ArticlesPage() {
   }, 600)
 
   // Delete handler
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selected) return
-    try {
-      await deleteMutation.mutateAsync({ id: selected.id })
-    } catch (error) {
-      handleErrorResponse(error)
-      return
-    }
-    toast.success('Article deleted')
-    setDeleteOpen(false)
-    const currentPage = search.page ?? 1
-    if (articles.data.length === 1 && currentPage > 1) {
-      navigate({ search: (prev) => ({ ...prev, page: currentPage - 1 }) })
-    }
+    deleteMutation.mutate(
+      { id: selected.id },
+      {
+        onSuccess: () => {
+          toast.success('Article deleted')
+          setDeleteOpen(false)
+          const currentPage = search.page ?? 1
+          if (articles.data.length === 1 && currentPage > 1) {
+            navigate({ search: (prev) => ({ ...prev, page: currentPage - 1 }) })
+          }
+        },
+        onError: (error) => handleErrorResponse(error),
+      },
+    )
   }
 
   // Table columns
@@ -174,7 +191,20 @@ function ArticlesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium">Articles</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/dashboard"
+            className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
+          >
+            <ArrowLeft />
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold">Articles</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage your published and draft articles
+            </p>
+          </div>
+        </div>
         <Link to="/dashboard/articles/add" className={cn(buttonVariants())}>
           <Plus />
           <span>Add Article</span>
@@ -224,7 +254,6 @@ function ArticlesPage() {
             <AlertDialogAction
               variant="destructive"
               isLoading={deleteMutation.isPending}
-              disabled={deleteMutation.isPending}
               onClick={handleDelete}
             >
               Delete

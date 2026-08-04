@@ -1,7 +1,5 @@
-import {
-  FileUploader,
-  type UploadResult,
-} from '#/components/system/file-uploader'
+import type { UploadResult } from '#/components/system/file-uploader'
+import { FileUploader } from '#/components/system/file-uploader'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import {
@@ -32,16 +30,14 @@ import {
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
 import { orpc } from '#/lib/orpc'
-import {
-  ARTICLE_STATUS,
-  articleInputSchema,
-  type ArticleInputSchemaType,
-} from '#/schema/articleSchema'
+import type { ArticleInputSchemaType } from '#/schema/articleSchema'
+import { ARTICLE_STATUS, articleInputSchema } from '#/schema/articleSchema'
 import type { CategoryOptionSchemaType } from '#/schema/categorySchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import slugify from '@sindresorhus/slugify'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Controller, useForm, type UseFormReturn } from 'react-hook-form'
+import type { UseFormReturn } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 
 interface ArticleFormProps {
   defaultValues: ArticleInputSchemaType
@@ -50,7 +46,9 @@ interface ArticleFormProps {
   onSubmit: (
     values: ArticleInputSchemaType,
     setError: UseFormReturn<ArticleInputSchemaType>['setError'],
-  ) => Promise<void>
+  ) => void
+  // The page owns the mutation, so it reports the in-flight state
+  isPending: boolean
 }
 
 export function ArticleForm({
@@ -58,6 +56,7 @@ export function ArticleForm({
   initialThumbnail,
   submitLabel,
   onSubmit,
+  isPending,
 }: ArticleFormProps) {
   const { data: categories } = useSuspenseQuery(
     orpc.categories.getCategoryOptions.queryOptions(),
@@ -70,10 +69,10 @@ export function ArticleForm({
 
   return (
     <form
-      onSubmit={form.handleSubmit(async (v) => onSubmit(v, form.setError))}
+      onSubmit={form.handleSubmit((v) => onSubmit(v, form.setError))}
       autoComplete="off"
     >
-      <FieldSet disabled={form.formState.isSubmitting}>
+      <FieldSet disabled={isPending}>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left — content + SEO */}
           <div className="space-y-6 lg:col-span-2">
@@ -109,12 +108,7 @@ export function ArticleForm({
                     render={({ field, fieldState }) => (
                       <Field>
                         <FieldLabel htmlFor="slug">Slug</FieldLabel>
-                        <Input
-                          id="slug"
-                          {...field}
-                          disabled
-                          className="disabled:opacity-75"
-                        />
+                        <Input id="slug" {...field} disabled />
                         <FieldError errors={[fieldState.error]} />
                       </Field>
                     )}
@@ -300,11 +294,7 @@ export function ArticleForm({
               </CardContent>
             </Card>
 
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={form.formState.isSubmitting}
-            >
+            <Button type="submit" className="w-full" isLoading={isPending}>
               {submitLabel}
             </Button>
           </div>

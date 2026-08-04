@@ -63,7 +63,7 @@ function ResetPasswordPage() {
           setFormError('')
         },
         onSuccess: () => {
-          toast.success('Password reset successful')
+          toast.success('Password reset')
           router.navigate({ to: '/auth/sign-in' })
         },
         onError: (ctx: { error: { message: string } }) =>

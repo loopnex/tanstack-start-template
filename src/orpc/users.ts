@@ -1,6 +1,7 @@
-import { users as usersTable } from '#/db/schema'
+import { articles as articlesTable, users as usersTable } from '#/db/schema'
 import { auth } from '#/lib/better-auth/auth'
 import { db } from '#/lib/db'
+import { mediaService } from '#/lib/media/queries'
 import { getPaginationQuery } from '#/lib/pagination'
 import { adminOnly } from '#/orpc'
 import { paginated } from '#/schema/paginationSchema'
@@ -66,6 +67,7 @@ const getUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, input.id))
+      .limit(1)
     if (!user) throw new ORPCError('NOT_FOUND', { message: 'User not found' })
     return user
   })
@@ -104,6 +106,13 @@ const createUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, user.id))
+      .limit(1)
+
+    if (!created)
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'Failed to create user',
+      })
+
     return created
   })
 
@@ -124,6 +133,7 @@ const updateUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, id))
+      .limit(1)
     if (!existing)
       throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
@@ -154,6 +164,13 @@ const updateUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, id))
+      .limit(1)
+
+    if (!updated)
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'Failed to update user',
+      })
+
     return updated
   })
 
@@ -196,6 +213,13 @@ const banUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, id))
+      .limit(1)
+
+    if (!updated)
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'Failed to update user',
+      })
+
     return updated
   })
 
@@ -214,12 +238,23 @@ const deleteUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, input.id))
+      .limit(1)
     if (!user) throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
     if (user.id === context.user.id)
       throw new ORPCError('CONFLICT', {
         message: 'You cannot delete your own account',
       })
+
+    // Clear media before the article rows cascade away
+    const authored = await db
+      .select({ id: articlesTable.id })
+      .from(articlesTable)
+      .where(eq(articlesTable.userId, user.id))
+    await mediaService.deleteForIds(
+      'article',
+      authored.map((a) => a.id),
+    )
 
     await auth.api.removeUser({
       headers: context.headers,

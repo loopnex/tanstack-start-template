@@ -54,3 +54,22 @@ export const userBanSchema = z.object({
   banReason: z.string().optional(),
 })
 export type UserBanSchemaType = z.infer<typeof userBanSchema>
+
+/**
+ * One schema for create+edit — password is only required in 'create' mode.
+ */
+export const userFormSchema = (mode: 'create' | 'edit') =>
+  z
+    .object({
+      name: z.string().nonempty('Name is required'),
+      email: z.email({
+        error: ({ input }) => (!input ? 'Email is required' : 'Invalid email'),
+      }),
+      password: z.string().optional(),
+      role: z.enum(USER_ROLES),
+    })
+    .refine((data) => mode === 'edit' || (data.password?.length ?? 0) >= 8, {
+      message: 'Password must be at least 8 characters',
+      path: ['password'],
+    })
+export type UserFormSchemaType = z.infer<ReturnType<typeof userFormSchema>>

@@ -54,7 +54,7 @@ function SignInPage() {
           setFormError('')
         },
         onSuccess: () => {
-          toast.success('Login successful!')
+          toast.success('Signed in')
           router.navigate({ to: '/dashboard' })
         },
         onError: (ctx) => setFormError(ctx.error.message),

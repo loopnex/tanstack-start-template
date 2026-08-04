@@ -19,13 +19,8 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import {
-  ErrorCode,
-  useDropzone,
-  type Accept,
-  type FileError,
-  type FileRejection,
-} from 'react-dropzone'
+import type { Accept, FileError, FileRejection } from 'react-dropzone'
+import { ErrorCode, useDropzone } from 'react-dropzone'
 import { ulid } from 'ulid'
 
 // Types
@@ -62,15 +57,17 @@ export interface FileUploaderProps {
   modelId?: string // polymorphic relation
   label?: string
   description?: string // auto-built from fileTypes/accept/size when omitted
-  /*
-  Pre-existing files shown on mount (e.g. an edit page) — rendered as completed
-  rows; their trash button deletes from storage. Map media rows to UploadResult.
-  */
+  /**
+   * Pre-existing files shown on mount, rendered as completed rows. Removing one
+   * drops it from the form; the attached row is deleted server-side on save.
+   */
   initialFiles?: UploadResult[]
   // Per-file validator (runs in dropzone); return null to accept
   validator?: (file: File) => FileError | FileError[] | null
   onUploadComplete?: (result: UploadResult) => void
   onUploadError?: (error: Error, file: File) => void
+  // Fires after a completed row is removed
+  onFileRemove?: (result: UploadResult) => void
   className?: string
   disabled?: boolean
 }
@@ -118,8 +115,8 @@ function resolveAccept(
 
 // Dropzone glyph: the lone file-type's icon, else a generic upload cloud.
 function resolveDropzoneIcon(fileTypes?: FileType[]): React.ElementType {
-  if (fileTypes?.length === 1) return FILE_TYPE_CONFIG[fileTypes[0]].icon
-  return UploadCloud
+  const only = fileTypes?.length === 1 ? fileTypes[0] : undefined
+  return only ? FILE_TYPE_CONFIG[only].icon : UploadCloud
 }
 
 // Helpers
@@ -178,7 +175,7 @@ function buildDescription(
       const groups = [
         ...new Set(
           Object.keys(accept).map((mime) => {
-            const [type] = mime.split('/')
+            const type = mime.split('/')[0] ?? mime
             return type.charAt(0).toUpperCase() + type.slice(1)
           }),
         ),
@@ -317,7 +314,7 @@ function BusyOverlay({ value }: { value: number }) {
 // Single-file preview — fills the parent's height when it's constrained
 // (object-cover crops instead of overflowing); keeps its natural aspect
 // ratio when the parent height is left flexible.
-const SinglePreview = React.memo(function SinglePreview({
+const SinglePreview = React.memo(function ({
   entry,
   onRemove,
 }: {
@@ -361,9 +358,10 @@ const SinglePreview = React.memo(function SinglePreview({
     </div>
   )
 })
+SinglePreview.displayName = 'SinglePreview'
 
 // Multi-file tile — square, dashed border to match the dropzone
-const FileTile = React.memo(function FileTile({
+const FileTile = React.memo(function ({
   entry,
   onRemove,
 }: {
@@ -407,6 +405,7 @@ const FileTile = React.memo(function FileTile({
     </div>
   )
 })
+FileTile.displayName = 'FileTile'
 
 // FileUploader
 export function FileUploader({
@@ -425,6 +424,7 @@ export function FileUploader({
   validator,
   onUploadComplete,
   onUploadError,
+  onFileRemove,
   className,
   disabled = false,
 }: FileUploaderProps) {
@@ -508,7 +508,7 @@ export function FileUploader({
           controllersRef.current.delete(entry.id)
           if (
             controller.signal.aborted ||
-            (err as Error)?.name === 'AbortError'
+            (err instanceof Error && err.name === 'AbortError')
           ) {
             patch(entry.id, { status: 'cancelled', error: 'Upload cancelled' })
             return
@@ -597,24 +597,38 @@ export function FileUploader({
     onError: handleDropzoneError,
   })
 
-  // Remove a row: delete completed uploads server-side; abort in-flight ones.
+  // Drop a row locally, releasing its blob preview
+  const dropEntry = useCallback((entry: FileEntry) => {
+    if (entry.preview?.startsWith('blob:')) URL.revokeObjectURL(entry.preview)
+    setEntries((prev) => prev.filter((e) => e.id !== entry.id))
+  }, [])
+
+  // Remove a row: delete this session's uploads server-side, abort in-flight ones
   const removeEntry = useCallback(
     (id: string) => {
       const entry = entriesRef.current.find((e) => e.id === id)
       if (!entry) return
 
-      // Completed → delete on the server first, then drop; revert on failure.
       if (entry.status === 'complete' && entry.result) {
-        const { key } = entry.result
+        const result = entry.result
+
+        // No `file` means it came from initialFiles and is already attached,
+        // so the slot is cleared server-side on save instead
+        if (!entry.file) {
+          dropEntry(entry)
+          onFileRemove?.(result)
+          return
+        }
+
+        // Uploaded this session and still unattached
         patch(id, { deleting: true, error: undefined })
-        fetch(`/api/upload/delete?key=${encodeURIComponent(key)}`, {
+        fetch(`/api/upload/delete?key=${encodeURIComponent(result.key)}`, {
           method: 'DELETE',
         })
           .then((res) => {
             if (!res.ok) throw new Error(`Delete failed (${res.status})`)
-            if (entry.preview?.startsWith('blob:'))
-              URL.revokeObjectURL(entry.preview)
-            setEntries((prev) => prev.filter((e) => e.id !== id))
+            dropEntry(entry)
+            onFileRemove?.(result)
           })
           .catch((err: unknown) => {
             const message = err instanceof Error ? err.message : 'Delete failed'
@@ -626,10 +640,9 @@ export function FileUploader({
       // Otherwise abort any in-flight upload and remove locally.
       controllersRef.current.get(id)?.abort()
       controllersRef.current.delete(id)
-      if (entry.preview?.startsWith('blob:')) URL.revokeObjectURL(entry.preview)
-      setEntries((prev) => prev.filter((e) => e.id !== id))
+      dropEntry(entry)
     },
-    [patch],
+    [patch, dropEntry, onFileRemove],
   )
 
   // The drop zone (the "handler") — big dashed box with drag/hover/drop states.
@@ -678,7 +691,7 @@ export function FileUploader({
 
       <div
         className={cn(
-          'flex size-16 items-center justify-center rounded-full bg-secondary transition-all duration-200 group-focus-visible:bg-primary/10',
+          'flex size-16 shrink-0 items-center justify-center rounded-full bg-secondary transition-all duration-200 group-focus-visible:bg-primary/10',
           isDragAccept && 'scale-110 bg-primary/10',
           isDragReject && 'scale-110 bg-destructive/10',
         )}
@@ -707,7 +720,9 @@ export function FileUploader({
           </span>
         </p>
         {autoDescription && (
-          <p className="text-xs text-muted-foreground leading-5">{autoDescription}</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {autoDescription}
+          </p>
         )}
       </div>
     </div>

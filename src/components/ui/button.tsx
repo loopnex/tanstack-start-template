@@ -47,6 +47,7 @@ function Button({
   variant = 'default',
   size = 'default',
   isLoading,
+  disabled,
   children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> &
@@ -56,6 +57,7 @@ function Button({
   return (
     <button
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || isLoading}
       {...props}
     >
       {isLoading ? (

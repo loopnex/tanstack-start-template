@@ -17,7 +17,7 @@ function ComboboxChips({
       <ComboboxPrimitive.Chips
         data-slot="combobox-chips"
         className={cn(
-          'relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm transition-[color,box-shadow] focus-within:border-primary has-disabled:opacity-50 has-aria-invalid:border-destructive!',
+          'relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm transition-[color,box-shadow] focus-within:border-primary has-disabled:cursor-not-allowed has-disabled:bg-muted has-aria-invalid:border-destructive!',
           className,
         )}
         {...props}
@@ -64,7 +64,7 @@ function ComboboxChipsInput({
     <ComboboxPrimitive.Input
       data-slot="combobox-chips-input"
       className={cn(
-        'min-w-24 flex-1 bg-transparent text-sm outline-hidden placeholder:font-medium placeholder:text-muted-foreground',
+        'min-w-24 flex-1 bg-transparent text-sm outline-hidden placeholder:text-sm placeholder:font-medium placeholder:text-muted-foreground',
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ function ComboboxInput({ className, ...props }: ComboboxPrimitive.Input.Props) {
       <ComboboxPrimitive.Input
         data-slot="combobox-input"
         className={cn(
-          'h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm outline-hidden transition-[color,box-shadow] placeholder:font-medium placeholder:text-muted-foreground focus-visible:border-primary disabled:opacity-50 aria-invalid:border-destructive!',
+          'h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 pr-9 text-sm outline-hidden transition-[color,box-shadow] placeholder:text-sm placeholder:font-medium placeholder:text-muted-foreground focus-visible:border-primary disabled:cursor-not-allowed disabled:bg-muted aria-invalid:border-destructive!',
           className,
         )}
         {...props}
@@ -113,7 +113,7 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           className={cn(
-            'relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) origin-(--transform-origin) overflow-y-auto rounded-md border bg-white p-1.5 text-foreground shadow-lg duration-150 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-transparent dark:bg-secondary',
+            'relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) origin-(--transform-origin) overflow-y-auto rounded-md border bg-card p-1.5 text-foreground shadow-lg duration-150 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-transparent dark:bg-secondary',
             className,
           )}
           {...props}

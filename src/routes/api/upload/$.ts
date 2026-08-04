@@ -1,5 +1,6 @@
 import { media } from '#/db/schema'
 import { db } from '#/lib/db'
+import type { UploadedPart } from '#/lib/media/s3'
 import {
   abortMultipartUpload,
   completeMultipartUpload,
@@ -9,7 +10,6 @@ import {
   objectPublicUrl,
   signParts,
   signPut,
-  type UploadedPart,
 } from '#/lib/media/s3'
 import slugify from '@sindresorhus/slugify'
 import { createFileRoute } from '@tanstack/react-router'
@@ -26,6 +26,9 @@ const MAX_PARTS = 10_000 // S3 hard limit on parts per multipart upload
 const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100 MB
 
 const COLLECTION_RE = /^[a-z0-9-]+$/
+
+// The collection is the key's first path segment
+const collectionOf = (key: string) => key.split('/')[0] ?? ''
 const json = (data: unknown, status = 200) => Response.json(data, { status })
 
 // The action is the last path segment, e.g. /api/upload/sign.
@@ -52,8 +55,6 @@ async function record(args: {
   userId: string | null
 }) {
   const mediaId = ulid()
-  // Browser-reachable storage URL (served directly from the bucket/CDN).
-  const url = objectPublicUrl(args.key)
   await db.insert(media).values({
     id: mediaId,
     modelType: args.modelType,
@@ -65,12 +66,11 @@ async function record(args: {
     mimeType: args.mimeType,
     size: args.size,
     collection: args.collection,
-    url,
   })
   return {
     mediaId,
     key: args.key,
-    url,
+    url: objectPublicUrl(args.key),
     name: args.name,
     mimeType: args.mimeType,
     size: args.size,
@@ -118,7 +118,7 @@ async function signPartUrls(request: Request) {
   }
   if (!body.key || !body.uploadId)
     return json({ error: 'key/uploadId required' }, 400)
-  if (!COLLECTION_RE.test(body.key.split('/')[0]))
+  if (!COLLECTION_RE.test(collectionOf(body.key)))
     return json({ error: 'invalid key' }, 400)
   if (!Array.isArray(body.partNumbers) || body.partNumbers.length === 0)
     return json({ error: 'partNumbers required' }, 400)
@@ -147,7 +147,7 @@ async function complete(request: Request) {
   if (!body.key) return json({ error: 'key required' }, 400)
 
   // Derive the collection from the key's prefix rather than trusting the client.
-  const collection = body.key.split('/')[0]
+  const collection = collectionOf(body.key)
   if (!COLLECTION_RE.test(collection))
     return json({ error: 'invalid key' }, 400)
 
@@ -184,16 +184,31 @@ async function abort(url: URL) {
   const key = url.searchParams.get('key')
   const uploadId = url.searchParams.get('uploadId')
   if (!key || !uploadId) return json({ error: 'key/uploadId required' }, 400)
+  if (!COLLECTION_RE.test(collectionOf(key)))
+    return json({ error: 'invalid key' }, 400)
   await abortMultipartUpload(key, uploadId)
   return new Response(null, { status: 204 })
 }
 
-// Delete a finished file: storage first, then DB row.
+/**
+ * Deletes a finished file: storage first, then DB row.
+ * Only unattached rows are deletable, since uploads are unauthenticated.
+ */
 async function remove(url: URL) {
   const key = url.searchParams.get('key')
   if (!key) return json({ error: 'key required' }, 400)
+
+  const [row] = await db
+    .select({ id: media.id, modelId: media.modelId })
+    .from(media)
+    .where(eq(media.key, key))
+    .limit(1)
+
+  if (!row) return json({ error: 'not found' }, 404)
+  if (row.modelId) return json({ error: 'file is in use' }, 403)
+
   await deleteObject(key)
-  await db.delete(media).where(eq(media.key, key))
+  await db.delete(media).where(eq(media.id, row.id))
   return new Response(null, { status: 204 })
 }
 

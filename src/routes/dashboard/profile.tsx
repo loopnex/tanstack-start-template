@@ -25,6 +25,7 @@ import {
   changePassword,
   updateUser,
 } from '#/lib/better-auth/auth-client'
+import { cn } from '#/lib/utils'
 import type {
   ProfileEmailSchemaType,
   ProfileNameSchemaType,
@@ -73,7 +74,7 @@ function ProfilePage() {
           setNameError('')
         },
         onSuccess: () => {
-          toast.success('Name updated successfully.')
+          toast.success('Name updated')
           router.invalidate()
         },
         onError: (ctx) => setNameError(ctx.error.message),
@@ -100,7 +101,7 @@ function ProfilePage() {
           setEmailError('')
         },
         onSuccess: () => {
-          toast.success('Email updated successfully.')
+          toast.success('Email updated')
           router.invalidate()
         },
         onError: (ctx) => setEmailError(ctx.error.message),
@@ -138,7 +139,7 @@ function ProfilePage() {
           setPasswordError('')
         },
         onSuccess: () => {
-          toast.success('Password updated successfully.')
+          toast.success('Password updated')
           passwordForm.reset()
         },
         onError: (ctx) => setPasswordError(ctx.error.message),
@@ -152,7 +153,7 @@ function ProfilePage() {
       <div className="flex items-center gap-3">
         <Link
           to="/dashboard"
-          className={buttonVariants({ variant: 'outline', size: 'icon' })}
+          className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
         >
           <ArrowLeft />
         </Link>

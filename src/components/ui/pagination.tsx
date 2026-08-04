@@ -15,7 +15,7 @@ interface PaginationProps {
   onLimitChange: (limit: number) => void
 }
 
-const PAGE_SIZES = [10, 25, 50, 100]
+const PAGE_SIZES = [10, 25, 50, 100] as const
 
 export const Pagination = ({
   meta,

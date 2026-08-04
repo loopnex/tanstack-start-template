@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 Conventions for this repo. Follow them exactly — consistency is the point. When a
 task matches a pattern below, copy the existing shape rather than inventing one.
@@ -22,38 +22,95 @@ an S3 client living in-process are all fine).
 - **Storage:** S3-compatible (R2/MinIO/AWS) via presigned uploads (`src/lib/media`).
 - **Forms/validation:** react-hook-form + zod (`@hookform/resolvers`). All schemas in `src/schema`.
   - **Email fields:** zod v4 deprecated `z.string().email()` — use `z.email({ error: ({ input }) => (!input ? 'Email is required' : 'Invalid email') })` instead (see `src/schema/authSchema.ts`).
-- **UI:** Tailwind v4, base-ui primitives wrapped in `src/components/ui`, lucide icons, sonner toasts.
+- **UI:** Tailwind v4, base-ui primitives wrapped in `src/components/ui`, lucide icons, sonner toasts. Exception: `dropdown.tsx` and `drawer.tsx` wrap `@headlessui/react` — base-ui has no equivalent menu yet. Everything else is base-ui.
+- **Env:** validated once in `src/lib/env.ts` (zod). Server modules import `env` from there — never read `process.env` directly outside that file.
+- **Env files:** `.env.local` is **committed** with the Docker defaults so a clone runs with no setup; `.env` is gitignored and **takes priority** over it. Adding a variable means updating `env.ts`, `.env.local` and `.env.example` together. Never put a real secret in `.env.local`.
+- **Local services:** `docker-compose.yml` runs Postgres, Redis, Mailpit (SMTP sink) and MinIO.
 - **Import alias:** `#/*` → `src/*`. Always use it.
 
 ### Commands
 
+- `pnpm services:up` / `services:down` / `services:logs` — Docker services.
 - `pnpm dev` — app on :3000.
 - `pnpm email:dev` — react-email preview on :3005 (run alongside `dev` when touching templates).
 - `pnpm db:generate` / `db:migrate` / `db:push` / `db:studio` — Drizzle.
-- `node node_modules/typescript/bin/tsc --noEmit` — typecheck (run after changes).
+- `pnpm db:seed` — admin@example.com + user@example.com, password `password12345`.
+- `pnpm typecheck` — run after changes.
 - `pnpm check` — prettier + eslint --fix.
+
+There are no tests and no test runner in this repo. Do not add test files.
+
+## Never suppress lint or type errors
+
+**Suppression comments are banned. There is no acceptable use.** Not one, not
+"temporarily", not with a justification attached:
+
+```ts
+// ✗ every one of these is forbidden
+// eslint-disable
+// eslint-disable-line
+// eslint-disable-next-line some-rule
+/* eslint-disable some-rule */
+// @ts-ignore
+// @ts-expect-error
+// @ts-nocheck
+```
+
+`any` and `as unknown as X` to escape a type error count as the same thing.
+
+**Turning a rule off in `eslint.config.js` is not the workaround either.** That
+file is the project's policy and only its owner changes it. Never edit it, and
+never widen an existing `'off'`, to make your own code pass.
+
+A rule firing means the code is wrong, or the types are wrong. Fix the cause:
+restructure the code, narrow the type, add the missing guard. If you genuinely
+believe a rule is misfiring, **stop and ask** — report the rule, the file, and
+why you think it's a false positive, and let the user decide. Never decide it
+yourself and move on.
+
+Leaving a warning unfixed and reporting it honestly is always better than
+silencing it.
+
+The single exception is **generated files** — `src/routeTree.gen.ts` ships with
+its own suppressions and is already in the ignore list. Never hand-edit it.
 
 ## Comments
 
-One line, to the point — what the code does, not why it exists or how it
-compares to alternatives. If it genuinely needs more than one line, that's a
-sign it belongs in a JSDoc block, not a longer inline comment.
+Two forms only. There is no third.
+
+1. **One line → `//`.** A short label saying what the code does. No second `//` line.
+2. **Needs more than one line → JSDoc `/** \*/`.\*\* Two or three lines maximum.
+
+Write them for someone who has never seen the file. State what the thing is or
+does, in plain words.
+
+**Never:**
+
+- A `//` comment wrapped across two or more lines. If it doesn't fit on one, it's JSDoc.
+- Addressing the reader ("note that…", "you can…", "we do this because…").
+- Justifying the decision, comparing it to an alternative, or recording what the
+  code used to do.
+- Cross-references like "see users.deleteUser" or "matches the X in Y".
+- Restating the identifier — `// Get user` above `getUser` says nothing.
 
 ```ts
-// Auto-generated slug, read-only
-<Input id="slug" disabled />
+// ✓ one line, says what it is
+const slug = slugify(input.title)
 
-// ✗ never — a paragraph explaining a design decision as an inline comment
-// Create and edit share this form but need different required fields
-// (password only on create) — one schema keeps a single inferred type
-// instead of two mismatched ones, since react-hook-form needs...
-const userFormSchema = (mode: 'create' | 'edit') => ...
-
-// ✓ short inline, or reach for JSDoc if it truly needs the room
+// ✓ JSDoc when one line genuinely isn't enough
 /**
  * One schema for create+edit — password is only required in 'create' mode.
  */
 const userFormSchema = (mode: 'create' | 'edit') => ...
+
+// ✗ two-line inline comment — must be JSDoc
+// Clear media before the article rows cascade away, otherwise the S3
+// objects are orphaned with nothing pointing at them
+await mediaService.deleteForIds('article', ids)
+
+// ✗ explaining a decision to the reader
+// We keep this here rather than in the handler because it's cleaner and
+// the middleware already ran, so there's no need to check again
 ```
 
 ## oRPC procedures
@@ -66,7 +123,7 @@ resource into `src/orpc/router.ts`.
 ### Anatomy of a procedure
 
 Every procedure is `builder.route(...).input(...).output(...).handler(...)`, and
-each method file reads top-to-bottom as `getX → getXs → createX → updateX →
+each method file reads top-to-bottom as `getXs → getX → createX → updateX →
 deleteX`. **Prefix every procedure with a one-line comment** so methods are easy
 to scan in a big file: `// Get Articles (Paginated)`, `// Create Article`, etc.
 
@@ -135,13 +192,12 @@ Client side, route **every** mutation error through one helper —
 omit it (e.g. a list-row delete) and everything becomes a toast.
 
 ```ts
-const mutation = useMutation(orpc.foo.createFoo.mutationOptions())
-try {
-  await mutation.mutateAsync(values)
-} catch (error) {
-  return handleErrorResponse(error, form.setError) // form: inline + toast
-}
-// non-form: catch (error) { return handleErrorResponse(error) }   // toast only
+mutation.mutate(values, {
+  onSuccess: () => {
+    /* toast, close dialog, navigate */
+  },
+  onError: (error) => handleErrorResponse(error, form.setError), // omit setError for toast-only
+})
 ```
 
 ## Pagination
@@ -171,7 +227,7 @@ export const Route = createFileRoute('/dashboard/articles/')({
   validateSearch: (s) => articleFilterSchema.parse(s), // when the list is filterable via URL
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(articlesQuery(deps)),
+    ensureQueryData(context.queryClient, articlesQuery(deps)),
   component: ArticlesPage,
 })
 // in component: const { data: articles } = useSuspenseQuery(articlesQuery(search))
@@ -181,8 +237,10 @@ export const Route = createFileRoute('/dashboard/articles/')({
 
 - **Every list read — paginated or not — uses `useSuspenseQuery`.** The loader already `ensureQueryData`s before the route commits, and no route in this app configures a `pendingComponent`, so a same-route search/page change blocks silently (the old page just stays put) until the loader resolves — by the time the component re-renders with new params, the data's already cached. So `useSuspenseQuery` never visibly re-suspends here: no `placeholderData`/`isPlaceholderData` dimming needed, and no `data!`/`isSuccess` narrowing guard either — `data` comes back guaranteed.
 - **Wire `<Pagination>` with `paginationHandlers(navigate)`** (`src/lib/pagination.ts`) instead of writing `onPageChange`/`onLimitChange` inline: `<Pagination meta={x.meta} {...paginationHandlers(navigate)} />`.
-- **Mutate with `useMutation(orpc.<resource>.<procedure>.mutationOptions())`**, then `await mutation.mutateAsync(values)` wrapped in try/catch — the catch routes the error through `handleErrorResponse` (see oRPC procedures → Errors) and the try-block continues with UI-only effects (toast, close dialog, navigate). Never `safeClient` — it doesn't exist; `useMutation`'s own throw/catch is the non-throwing boundary now.
-- **Cache invalidation is centralized, not per-component.** `src/lib/orpc.ts`'s `experimental_defaults` wires every `create`/`update`/`delete` procedure under a resource to invalidate that whole resource's query group on success (`createGeneralUtils([resource]).key()` partial-matches every procedure under it, including an options-list like `getCategoryOptions`). Components never call `invalidateQueries` themselves — adding a new mutation just means adding one line to that resource's block in `orpc.ts`.
+- **Loaders call `ensureQueryData(context.queryClient, …)`** from `#/lib/orpc`, never `queryClient.ensureQueryData` directly. The wrapper turns a `NOT_FOUND` into TanStack Router's `notFound()`, so a bad id renders the 404 page instead of an error boundary.
+- **Never `mutateAsync` and never try/catch.** Use `mutation.mutate(input, { onSuccess, onError })`. `onError` routes through `handleErrorResponse` — pass `form.setError` for inline field errors, omit it for a toast. `onSuccess` does UI only: toast, close the dialog, navigate.
+- **Invalidate where the mutation is declared**, by passing `onSuccess` to `mutationOptions`: `orpc.users.createUser.mutationOptions({ onSuccess: invalidate })` where `invalidate = () => queryClient.invalidateQueries({ queryKey: orpc.users.key() })`. `orpc.<resource>.key()` partial-matches every query under that resource, including option lists like `getCategoryOptions`. Keep cache concerns there and UI concerns in the `.mutate()` callbacks.
+- **A form's loading state is the mutation's `isPending`**, not `form.formState.isSubmitting` — `mutate` returns immediately, so `isSubmitting` is already false while the request is in flight. A shared form component takes it as an `isPending` prop.
 - Search: debounce with `useDebounceCallback(fn, 600)` and `navigate({ search })`, resetting `page` to `undefined`.
 - After delete on a list: if it was the last row on a page > 1, navigate back a page — the resource invalidation (and thus the refetch) already happened via the mutation's default `onSuccess`.
 - **Delete confirmations** tie `AlertDialogAction`'s `isLoading`/`disabled` and `AlertDialogCancel`'s `disabled` to the delete mutation's `isPending` — same loading feel as the create/edit form's `FieldSet disabled={form.formState.isSubmitting}`, just wired explicitly since the alert dialog's buttons aren't in a fieldset.
@@ -203,18 +261,36 @@ const openEdit = (item: T) => { ... }
 const columns: ColumnDef<T>[] = [...]
 ```
 
-**Every page starts with a header row.** Detail/form pages: a back button +
-title; list pages: title + primary action.
+**Every page starts with the same header row** — back button, title, and a
+one-line description. List pages add their primary action on the right; form
+pages stop after the description. Titles are always `text-xl font-semibold`.
 
 ```tsx
-// Back button (icon-only outline link). Note: NO class on the icon — see UI rules.
-<Link
-  to="/dashboard/articles"
-  className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
->
-  <ArrowLeft />
-</Link>
+<div className="mb-6 flex items-center justify-between gap-4">
+  <div className="flex items-center gap-3">
+    {/* Back button (icon-only outline link). NO class on the icon — see UI rules */}
+    <Link
+      to="/dashboard"
+      className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
+    >
+      <ArrowLeft />
+    </Link>
+    <div>
+      <h1 className="text-xl font-semibold">Categories</h1>
+      <p className="text-sm text-muted-foreground">
+        Organize articles into categories
+      </p>
+    </div>
+  </div>
+  <Button onClick={openCreate}>
+    <Plus />
+    <span>Add Category</span>
+  </Button>
+</div>
 ```
+
+The back link points one level up — `/dashboard` from a list page, the list from
+an add/edit page.
 
 **List = table card** with this exact structure: a `rounded-xl border bg-card`
 wrapper → optional search row (`p-6`) → `<DataTable columns data emptyMessage />`
@@ -239,6 +315,7 @@ page/module is added:
   <Button><Plus className="size-4" /></Button>               // ✗ never
   ```
 - Use `cn(buttonVariants({ variant, size }))` to style `Link`/`Dropdown` triggers as buttons.
+- **`isLoading` already disables the button.** Never pass `disabled` alongside it — one prop, one source of truth. `AlertDialogAction` takes `Button`'s props, so it works there too. A plain `disabled` is still right on buttons with no loading state of their own, like `AlertDialogCancel` during a delete.
 - **Select inputs:** plain `Select` for a simple single choice; use `Combobox` when it's **multi-select** or a **single select that needs in-list search**.
 - **Dates/time:** there is no default — **ask whether the field should show date only or date+time** before rendering, then use `formatDate` or `formatDateTime` from `#/lib/utils`. Never hand-roll date formatting; reuse what's in `utils.ts`.
 
@@ -255,7 +332,9 @@ can stay private, and Vite is gone so there's no interception.
 
 Invariants (don't break these):
 
-- The endpoint (`src/routes/api/upload/$.ts`) **never calls auth** — auth already runs in middleware. `media.userId` is written **null**; to attribute to a user, insert from an `authorized` procedure and pass `context.user.id`.
+- The endpoint (`src/routes/api/upload/$.ts`) is **deliberately unauthenticated**, so public upload forms work without a session. There is no request middleware in this repo — don't claim otherwise. `media.userId` is written **null**; to attribute to a user, insert from an `authorized` procedure and pass `context.user.id`.
+- Because it's public, **`delete` only removes rows that are still unattached** (`modelId` null). Once a procedure claims a row via `mediaService.sync`, clearing it is that resource's job. The uploader mirrors this: removing an `initialFiles` row only drops it from the form.
+- **`media` has no `url` column.** URLs are always derived from the key via `objectPublicUrl`, because dev and prod serve the same key from different bases. Never store one.
 - Keys are **server-built** `{collection}/{slug}-{ulid}` — **extensionless** so the dev static handler never intercepts the read URL (a trailing `.jpg`/`.png` gets grabbed before server routes run); Content-Type comes from the stored object. Client input is never a raw path. The `{collection}` is the storage folder, **not** a file-type scope.
 - Size/type come from storage (`headObject`), never the client. Default **100 MB** ceiling; `<FileUploader maxSize>` overrides it (sent on both `sign` and `complete`).
 - Media is **polymorphic** (`media.modelType` / `modelId` / `collection`), never a column on the parent. `userId` is nullable (`onDelete: 'set null'`).
@@ -290,6 +369,9 @@ Backend — use `mediaService`. `sync` attaches the uploaded row to the slot and
 returns it (no follow-up `findOne`); `deleteAll` before deleting the parent;
 lists batch-resolve with `findForIds` (no N+1):
 
+The `COLLECTION` is the **slot name**, never the resource name — `'thumbnail'`,
+`'image'`, `'gallery'`. It doubles as the storage folder.
+
 ```ts
 const MODEL = 'article'
 const COLLECTION = 'thumbnail'
@@ -302,6 +384,19 @@ const thumb = await mediaService.sync(
 return { ...article, thumbnail: thumb ? mediaService.toResult(thumb) : null }
 // delete:  await mediaService.deleteAll(MODEL, id)  // before db.delete(...)
 // list:    const map = await mediaService.findForIds(MODEL, ids, COLLECTION)
+// cascade: await mediaService.deleteForIds(MODEL, ids)  // parent rows cascade
+```
+
+### Multi-file slots (galleries)
+
+Same shape, plural methods: `findMany` reads the slot, `syncMany` takes the full
+list of ids and deletes whatever is missing from it. The input schema carries
+`z.array(z.string())`, and `<FileUploader multiple>` keeps it in sync via
+`onUploadComplete` (add) and `onFileRemove` (remove).
+
+```ts
+const images = await mediaService.syncMany(MODEL, id, 'gallery', input.imageIds)
+return { ...row, images: images.map(mediaService.toResult) }
 ```
 
 ### Standalone (no resource)
@@ -339,4 +434,6 @@ Workers are bootstrapped by the import `#/lib/workers` at the top of
 
 - `.env` is gitignored — never commit secrets.
 - No general role/permission checks exist; `authorized` only proves a session. The only exception is `adminOnly` (see oRPC procedures → Builder = auth boundary). Don't assume RBAC beyond that one case.
+- **An `adminOnly` procedure needs a matching route guard.** The procedure returns `FORBIDDEN`, which lands in the error boundary — add a `beforeLoad` redirect and mark the sidebar entry `adminOnly` so it's never offered (`src/routes/dashboard/users/index.tsx`).
 - Trust storage/server over the client for sizes, types, and slugs.
+- `/api/docs` executes real procedures, so its CORS origin is pinned to `BETTER_AUTH_URL`. Never reflect the caller's origin.

@@ -1,10 +1,4 @@
-import {
-  ChartBar,
-  LayoutGrid,
-  Settings,
-  SquarePen,
-  UserRound,
-} from 'lucide-react'
+import { ChartBar, LayoutGrid, SquarePen, UserRound } from 'lucide-react'
 
 export interface SubMenuItem {
   id: number
@@ -19,6 +13,8 @@ export interface MenuItem {
   url?: string
   baseUrl?: string
   submenu?: SubMenuItem[]
+  // Hidden from non-admins
+  adminOnly?: boolean
 }
 
 export interface MenuGroup {
@@ -67,17 +63,7 @@ export const menuGroups: MenuGroup[] = [
         title: 'Users',
         icon: <UserRound className="icon" />,
         url: '/dashboard/users',
-      },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      {
-        id: 5,
-        title: 'Settings',
-        icon: <Settings className="icon" />,
-        url: '/dashboard/settings',
+        adminOnly: true,
       },
     ],
   },

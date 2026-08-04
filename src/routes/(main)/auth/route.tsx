@@ -1,6 +1,6 @@
 import NotFound from '#/components/system/not-found'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const authSearchSchema = z.object({
   redirect: z.string().optional(),

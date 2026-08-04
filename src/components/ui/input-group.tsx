@@ -34,7 +34,7 @@ function InputGroupAddon({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 const groupButtonVariants = cva(
-  'mx-1 my-1 inline-flex shrink-0 cursor-pointer items-center self-stretch rounded px-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring [&>svg]:size-5 [&>svg]:stroke-[1.5]',
+  'mx-1 my-1 inline-flex shrink-0 cursor-pointer items-center self-stretch rounded px-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:outline-hidden [&>svg]:size-5 [&>svg]:stroke-[1.5]',
   {
     variants: {
       variant: {
@@ -72,7 +72,7 @@ function InputGroupInput({
     <input
       data-slot="input-group-control"
       className={cn(
-        'size-full placeholder:text-muted-foreground first:rounded-l-sm first:pl-3 last:rounded-r-sm last:pr-3 focus-visible:outline-hidden',
+        'size-full placeholder:text-sm placeholder:font-medium placeholder:text-muted-foreground first:rounded-l-sm first:pl-3 last:rounded-r-sm last:pr-3 focus-visible:outline-hidden',
         className,
       )}
       {...props}

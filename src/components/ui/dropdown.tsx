@@ -28,7 +28,7 @@ const DropdownItems = ({ children, className }: MenuItemsProps) => {
       transition
       anchor="bottom end"
       className={cn(
-        'z-40 min-w-40 origin-top-right rounded-md border bg-white p-1.5 shadow-lg transition duration-100 ease-out [--anchor-gap:--spacing(1.5)] focus:outline-hidden data-closed:scale-95 data-closed:opacity-0 dark:border-transparent dark:bg-secondary',
+        'z-40 min-w-40 origin-top-right rounded-md border bg-card p-1.5 shadow-lg transition duration-100 ease-out [--anchor-gap:--spacing(1.5)] focus:outline-hidden data-closed:scale-95 data-closed:opacity-0 dark:border-transparent dark:bg-secondary',
         className,
       )}
     >

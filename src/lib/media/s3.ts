@@ -1,3 +1,4 @@
+import { env } from '#/lib/env'
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -11,7 +12,7 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-const BUCKET = process.env.S3_BUCKET!
+const BUCKET = env.S3_BUCKET
 const SIGN_EXPIRES = 60 * 60 // presigned URLs valid for 1 hour
 
 /**
@@ -19,12 +20,14 @@ const SIGN_EXPIRES = 60 * 60 // presigned URLs valid for 1 hour
  * PROD: {BETTER_AUTH_URL}/files/{key} — streamed through the app, no Vite in prod so no interception.
  */
 export function objectPublicUrl(key: string) {
-  if (process.env.NODE_ENV !== 'production') {
-    const endpoint = process.env.S3_ENDPOINT?.replace(/\/+$/, '')
+  // Externally hosted media store an absolute URL as their key
+  if (/^https?:\/\//.test(key)) return key
+  if (env.NODE_ENV !== 'production') {
+    const endpoint = env.S3_ENDPOINT?.replace(/\/+$/, '')
     if (endpoint) return `${endpoint}/${BUCKET}/${key}`
-    return `https://${BUCKET}.s3.${process.env.S3_REGION!}.amazonaws.com/${key}`
+    return `https://${BUCKET}.s3.${env.S3_REGION}.amazonaws.com/${key}`
   }
-  return `${process.env.BETTER_AUTH_URL!.replace(/\/+$/, '')}/files/${key}`
+  return `${env.BETTER_AUTH_URL.replace(/\/+$/, '')}/files/${key}`
 }
 
 // Lazy, memoized client so this module is side-effect-free — bad S3 config only
@@ -34,12 +37,12 @@ let client: S3Client | undefined
 function s3() {
   client ??= new S3Client({
     // 'auto' for S3-compatible providers; a real region (us-east-1) for AWS.
-    region: process.env.S3_REGION || 'auto',
-    endpoint: process.env.S3_ENDPOINT || undefined,
-    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+    region: env.S3_REGION,
+    endpoint: env.S3_ENDPOINT || undefined,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
     credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      accessKeyId: env.S3_ACCESS_KEY_ID,
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
     },
   })
   return client

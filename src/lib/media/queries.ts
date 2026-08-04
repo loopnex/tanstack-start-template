@@ -2,7 +2,7 @@ import { media } from '#/db/schema'
 import { db } from '#/lib/db'
 import { deleteObject, objectPublicUrl } from '#/lib/media/s3'
 import type { MediaSchemaType } from '#/schema/mediaSchema'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 
 export type Media = typeof media.$inferSelect
 
@@ -35,7 +35,27 @@ export const mediaService = {
           eq(media.collection, collection),
         ),
       )
+      .limit(1)
     return row ?? null
+  },
+
+  // All media rows for a model + collection, oldest first
+  async findMany(
+    model: string,
+    modelId: string,
+    collection: string,
+  ): Promise<Media[]> {
+    return db
+      .select()
+      .from(media)
+      .where(
+        and(
+          eq(media.modelType, model),
+          eq(media.modelId, modelId),
+          eq(media.collection, collection),
+        ),
+      )
+      .orderBy(asc(media.createdAt))
   },
 
   // Batch-fetch one row per id (list pages, no N+1) → Map<modelId, Media>.
@@ -79,6 +99,60 @@ export const mediaService = {
       .where(eq(media.id, mediaId))
       .returning()
     return row ?? null
+  },
+
+  /**
+   * Multi-file equivalent of sync. Rows missing from mediaIds are deleted,
+   * new ids are claimed. mediaIds=undefined leaves the slot untouched.
+   */
+  async syncMany(
+    model: string,
+    modelId: string,
+    collection: string,
+    mediaIds: string[] | undefined,
+  ): Promise<Media[]> {
+    if (!mediaIds) return mediaService.findMany(model, modelId, collection)
+
+    const current = await mediaService.findMany(model, modelId, collection)
+    const keep = new Set(mediaIds)
+    const removed = current.filter((row) => !keep.has(row.id))
+    if (removed.length) {
+      await Promise.allSettled(removed.map((row) => deleteObject(row.key)))
+      await db.delete(media).where(
+        inArray(
+          media.id,
+          removed.map((row) => row.id),
+        ),
+      )
+    }
+
+    const owned = new Set(current.map((row) => row.id))
+    const toClaim = mediaIds.filter((id) => !owned.has(id))
+    if (toClaim.length) {
+      await db
+        .update(media)
+        .set({ modelType: model, modelId, collection })
+        .where(inArray(media.id, toClaim))
+    }
+
+    return mediaService.findMany(model, modelId, collection)
+  },
+
+  // Delete all media for many models at once
+  async deleteForIds(model: string, ids: string[]): Promise<void> {
+    if (!ids.length) return
+    const rows = await db
+      .select()
+      .from(media)
+      .where(and(eq(media.modelType, model), inArray(media.modelId, ids)))
+    if (!rows.length) return
+    await Promise.allSettled(rows.map((r) => deleteObject(r.key)))
+    await db.delete(media).where(
+      inArray(
+        media.id,
+        rows.map((r) => r.id),
+      ),
+    )
   },
 
   // Delete all media for a model (optionally one collection). Call before

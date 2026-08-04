@@ -1,5 +1,5 @@
+import type { ColumnDef } from '@tanstack/react-table'
 import {
-  type ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -23,7 +23,7 @@ export const DataTable = <TData, TValue>({
 
   // Init table
   const table = useReactTable({
-    data: data || [],
+    data,
     columns,
     state: {
       rowSelection,
@@ -66,7 +66,7 @@ export const DataTable = <TData, TValue>({
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
-                    className="py-2.5 max-w-57.5 truncate px-6 text-sm"
+                    className="max-w-57.5 truncate px-6 py-2.5 text-sm"
                     key={cell.id}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

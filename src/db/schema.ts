@@ -1,4 +1,5 @@
 import { relations } from 'drizzle-orm'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import {
   bigint,
   boolean,
@@ -6,10 +7,8 @@ import {
   pgTable,
   primaryKey,
   text,
-  timestamp
-  
+  timestamp,
 } from 'drizzle-orm/pg-core'
-import type {AnyPgColumn} from 'drizzle-orm/pg-core';
 import { ulid } from 'ulid'
 
 const timestamps = {
@@ -113,7 +112,6 @@ export const media = pgTable(
     mimeType: text('mime_type').notNull(),
     size: bigint('size', { mode: 'number' }).notNull(),
     collection: text('collection').notNull().default('default'),
-    url: text('url').notNull(),
     ...timestamps,
   },
   (table) => [

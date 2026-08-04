@@ -49,16 +49,34 @@ import {
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { orpc } from '#/lib/orpc'
+import { ensureQueryData, orpc } from '#/lib/orpc'
 import { paginationHandlers } from '#/lib/pagination'
 import { cn, formatDateTime } from '#/lib/utils'
-import type { UserFilterSchemaType, UserSchemaType } from '#/schema/userSchema'
-import { USER_ROLES, userFilterSchema } from '#/schema/userSchema'
+import type {
+  UserFilterSchemaType,
+  UserFormSchemaType,
+  UserSchemaType,
+} from '#/schema/userSchema'
+import {
+  USER_ROLES,
+  userFilterSchema,
+  userFormSchema,
+} from '#/schema/userSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, useRouteContext } from '@tanstack/react-router'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouteContext,
+} from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
+  ArrowLeft,
   Ban,
   EllipsisVertical,
   Pencil,
@@ -71,7 +89,6 @@ import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
-import * as z from 'zod'
 
 // Paginated query for the table (filters come from URL)
 const usersQuery = (filters: UserFilterSchemaType) =>
@@ -79,34 +96,15 @@ const usersQuery = (filters: UserFilterSchemaType) =>
 
 export const Route = createFileRoute('/dashboard/users/')({
   validateSearch: (s) => userFilterSchema.parse(s),
+  // Admin only
+  beforeLoad: ({ context: { session } }) => {
+    if (session?.user.role !== 'admin') throw redirect({ to: '/dashboard' })
+  },
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(usersQuery(deps)),
+    ensureQueryData(context.queryClient, usersQuery(deps)),
   component: UsersPage,
 })
-
-interface UserFormValues {
-  name: string
-  email: string
-  password?: string
-  role: (typeof USER_ROLES)[number]
-}
-
-// One schema for create+edit — password is only required when creating.
-const userFormSchema = (isCreate: boolean) =>
-  z
-    .object({
-      name: z.string().nonempty('Name is required'),
-      email: z.email({
-        error: ({ input }) => (!input ? 'Email is required' : 'Invalid email'),
-      }),
-      password: z.string().optional(),
-      role: z.enum(USER_ROLES),
-    })
-    .refine((data) => !isCreate || (data.password?.length ?? 0) >= 8, {
-      message: 'Password must be at least 8 characters',
-      path: ['password'],
-    })
 
 function UsersPage() {
   const navigate = Route.useNavigate()
@@ -114,10 +112,24 @@ function UsersPage() {
   const { session } = useRouteContext({ from: '__root__' })
   const { data: users } = useSuspenseQuery(usersQuery(search))
 
-  const createMutation = useMutation(orpc.users.createUser.mutationOptions())
-  const updateMutation = useMutation(orpc.users.updateUser.mutationOptions())
-  const banMutation = useMutation(orpc.users.banUser.mutationOptions())
-  const deleteMutation = useMutation(orpc.users.deleteUser.mutationOptions())
+  const queryClient = useQueryClient()
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: orpc.users.key() })
+
+  const createMutation = useMutation(
+    orpc.users.createUser.mutationOptions({ onSuccess: invalidate }),
+  )
+  const updateMutation = useMutation(
+    orpc.users.updateUser.mutationOptions({ onSuccess: invalidate }),
+  )
+  const banMutation = useMutation(
+    orpc.users.banUser.mutationOptions({ onSuccess: invalidate }),
+  )
+  const deleteMutation = useMutation(
+    orpc.users.deleteUser.mutationOptions({ onSuccess: invalidate }),
+  )
+
+  const isSaving = createMutation.isPending || updateMutation.isPending
 
   const [formOpen, setFormOpen] = useState(false)
   const [banOpen, setBanOpen] = useState(false)
@@ -136,8 +148,8 @@ function UsersPage() {
     })
   }, 600)
 
-  const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema(!selected)),
+  const form = useForm<UserFormSchemaType>({
+    resolver: zodResolver(userFormSchema(selected ? 'edit' : 'create')),
     defaultValues: { name: '', email: '', password: '', role: 'user' },
     mode: 'onChange',
   })
@@ -169,62 +181,76 @@ function UsersPage() {
   }
 
   // Create / update handler
-  const onSubmit = async (values: UserFormValues) => {
-    try {
-      if (selected) {
-        await updateMutation.mutateAsync({
+  const onSubmit = (values: UserFormSchemaType) => {
+    const callbacks = {
+      onSuccess: () => {
+        toast.success(selected ? 'User updated' : 'User created')
+        setFormOpen(false)
+      },
+      onError: (error: unknown) => handleErrorResponse(error, form.setError),
+    }
+
+    if (selected) {
+      updateMutation.mutate(
+        {
           id: selected.id,
           name: values.name,
           email: values.email,
           role: values.role,
-        })
-      } else {
-        await createMutation.mutateAsync({
+        },
+        callbacks,
+      )
+    } else {
+      createMutation.mutate(
+        {
           name: values.name,
           email: values.email,
           password: values.password ?? '',
           role: values.role,
-        })
-      }
-    } catch (error) {
-      handleErrorResponse(error, form.setError)
-      return
+        },
+        callbacks,
+      )
     }
-    toast.success(selected ? 'User updated' : 'User created')
-    setFormOpen(false)
   }
 
   // Ban / unban handler
-  const handleBanToggle = async () => {
+  const handleBanToggle = () => {
     if (!selected) return
-    try {
-      await banMutation.mutateAsync({
+    const wasBanned = selected.banned
+    banMutation.mutate(
+      {
         id: selected.id,
-        banned: !selected.banned,
+        banned: !wasBanned,
         banReason: banReason || undefined,
-      })
-    } catch (error) {
-      handleErrorResponse(error)
-      return
-    }
-    toast.success(selected.banned ? 'User unbanned' : 'User banned')
-    setBanOpen(false)
+      },
+      {
+        onSuccess: () => {
+          toast.success(wasBanned ? 'User unbanned' : 'User banned')
+          setBanOpen(false)
+        },
+        onError: (error) => handleErrorResponse(error),
+      },
+    )
   }
 
   // Delete handler
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selected) return
-    try {
-      await deleteMutation.mutateAsync({ id: selected.id })
-    } catch (error) {
-      handleErrorResponse(error)
-      return
-    }
-    toast.success('User deleted')
-    setDeleteOpen(false)
-    if (users.data.length === 1 && users.meta.page > 1) {
-      navigate({ search: (prev) => ({ ...prev, page: users.meta.page - 1 }) })
-    }
+    deleteMutation.mutate(
+      { id: selected.id },
+      {
+        onSuccess: () => {
+          toast.success('User deleted')
+          setDeleteOpen(false)
+          if (users.data.length === 1 && users.meta.page > 1) {
+            navigate({
+              search: (prev) => ({ ...prev, page: users.meta.page - 1 }),
+            })
+          }
+        },
+        onError: (error) => handleErrorResponse(error),
+      },
+    )
   }
 
   // Table columns
@@ -319,7 +345,20 @@ function UsersPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium">Users</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/dashboard"
+            className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
+          >
+            <ArrowLeft />
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold">Users</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage accounts, roles and access
+            </p>
+          </div>
+        </div>
         <Button onClick={openCreate}>
           <Plus />
           <span>Add User</span>
@@ -364,7 +403,7 @@ function UsersPage() {
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>All roles</SelectItem>
+              <SelectItem value={null}>All Roles</SelectItem>
               {USER_ROLES.map((role) => (
                 <SelectItem key={role} value={role} className="capitalize">
                   {role}
@@ -393,7 +432,7 @@ function UsersPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off">
-            <FieldSet disabled={form.formState.isSubmitting}>
+            <FieldSet disabled={isSaving}>
               <FieldGroup>
                 <Controller
                   name="name"
@@ -473,7 +512,7 @@ function UsersPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" isLoading={form.formState.isSubmitting}>
+                <Button type="submit" isLoading={isSaving}>
                   {selected ? 'Update User' : 'Create User'}
                 </Button>
               </DialogFooter>
@@ -528,7 +567,6 @@ function UsersPage() {
             <AlertDialogAction
               variant={selected?.banned ? 'default' : 'destructive'}
               isLoading={banMutation.isPending}
-              disabled={banMutation.isPending}
               onClick={handleBanToggle}
             >
               {selected?.banned ? 'Unban' : 'Ban'}
@@ -557,7 +595,6 @@ function UsersPage() {
             <AlertDialogAction
               variant="destructive"
               isLoading={deleteMutation.isPending}
-              disabled={deleteMutation.isPending}
               onClick={handleDelete}
             >
               Delete

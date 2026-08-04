@@ -1,3 +1,4 @@
+import { env } from '#/lib/env'
 import { router } from '#/orpc/router'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { OpenAPIReferencePlugin } from '@orpc/openapi/plugins'
@@ -13,7 +14,11 @@ const handler = new OpenAPIHandler(router, {
     }),
   ],
   plugins: [
-    new CORSPlugin(),
+    // Pinned to the app origin; this handler executes real procedures
+    new CORSPlugin({
+      origin: (origin) => (origin === env.BETTER_AUTH_URL ? origin : null),
+      credentials: true,
+    }),
     new OpenAPIReferencePlugin({
       schemaConverters: [new ZodToJsonSchemaConverter()],
       specGenerateOptions: {

@@ -182,7 +182,7 @@ const percent = (loaded: number, total: number) =>
   total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0
 
 const aborted = () => new DOMException('Aborted', 'AbortError')
-const isAbort = (e: unknown) => (e as Error)?.name === 'AbortError'
+const isAbort = (e: unknown) => e instanceof Error && e.name === 'AbortError'
 
 // PUT via XHR for upload progress + abort; resolves the response ETag for parts.
 function xhrPut(
@@ -240,7 +240,7 @@ async function postJson(
     // Use the server's { error } message; fall back to the HTTP status code.
     const message = await res
       .json()
-      .then((d) => (d as { error?: string })?.error)
+      .then((d) => (d as { error?: string } | null)?.error)
       .catch(() => null)
     throw new Error(message || `Request failed (${res.status})`)
   }

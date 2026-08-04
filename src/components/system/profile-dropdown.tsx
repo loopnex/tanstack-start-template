@@ -22,7 +22,7 @@ const ProfileDropdown = ({ session }: { session: Session }) => {
     await signOut({
       fetchOptions: {
         onSuccess: () => {
-          toast.success('You are now logged out!')
+          toast.success('Signed out')
           router.navigate({ to: '/auth/sign-in' })
         },
         onError: (ctx) => {

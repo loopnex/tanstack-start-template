@@ -1,9 +1,9 @@
 import { buttonVariants } from '#/components/ui/button'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { orpc } from '#/lib/orpc'
+import { ensureQueryData, orpc } from '#/lib/orpc'
 import { cn } from '#/lib/utils'
 import type { ArticleInputSchemaType } from '#/schema/articleSchema'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
@@ -12,7 +12,8 @@ import { ArticleForm } from './-components/article-form'
 
 export const Route = createFileRoute('/dashboard/articles/add')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(
+    ensureQueryData(
+      context.queryClient,
       orpc.categories.getCategoryOptions.queryOptions(),
     ),
   component: AddArticlePage,
@@ -20,23 +21,26 @@ export const Route = createFileRoute('/dashboard/articles/add')({
 
 function AddArticlePage() {
   const navigate = Route.useNavigate()
+  const queryClient = useQueryClient()
   const createMutation = useMutation(
-    orpc.articles.createArticle.mutationOptions(),
+    orpc.articles.createArticle.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: orpc.articles.key() }),
+    }),
   )
 
   // Create handler
-  const onSubmit = async (
+  const onSubmit = (
     values: ArticleInputSchemaType,
     setError: UseFormReturn<ArticleInputSchemaType>['setError'],
   ) => {
-    try {
-      await createMutation.mutateAsync(values)
-    } catch (error) {
-      handleErrorResponse(error, setError)
-      return
-    }
-    toast.success('Article created')
-    navigate({ to: '/dashboard/articles' })
+    createMutation.mutate(values, {
+      onSuccess: () => {
+        toast.success('Article created')
+        navigate({ to: '/dashboard/articles' })
+      },
+      onError: (error) => handleErrorResponse(error, setError),
+    })
   }
 
   return (
@@ -67,6 +71,7 @@ function AddArticlePage() {
         }}
         submitLabel="Create Article"
         onSubmit={onSubmit}
+        isPending={createMutation.isPending}
       />
     </div>
   )

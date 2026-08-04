@@ -48,22 +48,35 @@ import {
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
 import { handleErrorResponse } from '#/lib/error-handler'
-import { orpc } from '#/lib/orpc'
+import { ensureQueryData, orpc } from '#/lib/orpc'
 import { paginationHandlers } from '#/lib/pagination'
 import { cn, formatDateTime } from '#/lib/utils'
+import type {
+  CategoryFilterSchemaType,
+  CategoryInputSchemaType,
+  CategorySchemaType,
+} from '#/schema/categorySchema'
 import {
   categoryFilterSchema,
-  type CategoryFilterSchemaType,
   categoryInputSchema,
-  type CategoryInputSchemaType,
-  type CategorySchemaType,
 } from '#/schema/categorySchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import slugify from '@sindresorhus/slugify'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  EllipsisVertical,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -78,8 +91,9 @@ export const Route = createFileRoute('/dashboard/categories/')({
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) =>
     Promise.all([
-      context.queryClient.ensureQueryData(categoriesQuery(deps)),
-      context.queryClient.ensureQueryData(
+      ensureQueryData(context.queryClient, categoriesQuery(deps)),
+      ensureQueryData(
+        context.queryClient,
         orpc.categories.getCategoryOptions.queryOptions(),
       ),
     ]),
@@ -94,15 +108,22 @@ function CategoriesPage() {
     orpc.categories.getCategoryOptions.queryOptions(),
   )
 
+  const queryClient = useQueryClient()
+  // Every write refreshes the list and the options used by selects
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: orpc.categories.key() })
+
   const createMutation = useMutation(
-    orpc.categories.createCategory.mutationOptions(),
+    orpc.categories.createCategory.mutationOptions({ onSuccess: invalidate }),
   )
   const updateMutation = useMutation(
-    orpc.categories.updateCategory.mutationOptions(),
+    orpc.categories.updateCategory.mutationOptions({ onSuccess: invalidate }),
   )
   const deleteMutation = useMutation(
-    orpc.categories.deleteCategory.mutationOptions(),
+    orpc.categories.deleteCategory.mutationOptions({ onSuccess: invalidate }),
   )
+
+  const isSaving = createMutation.isPending || updateMutation.isPending
 
   const [formOpen, setFormOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -152,37 +173,40 @@ function CategoriesPage() {
   }
 
   // Create / update handler
-  const onSubmit = async (values: CategoryInputSchemaType) => {
-    try {
-      if (selected) {
-        await updateMutation.mutateAsync({ id: selected.id, ...values })
-      } else {
-        await createMutation.mutateAsync(values)
-      }
-    } catch (error) {
-      handleErrorResponse(error, form.setError)
-      return
+  const onSubmit = (values: CategoryInputSchemaType) => {
+    const callbacks = {
+      onSuccess: () => {
+        toast.success(selected ? 'Category updated' : 'Category created')
+        setFormOpen(false)
+      },
+      onError: (error: unknown) => handleErrorResponse(error, form.setError),
     }
-    toast.success(selected ? 'Category updated' : 'Category created')
-    setFormOpen(false)
+
+    if (selected) {
+      updateMutation.mutate({ id: selected.id, ...values }, callbacks)
+    } else {
+      createMutation.mutate(values, callbacks)
+    }
   }
 
   // Delete handler
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selected) return
-    try {
-      await deleteMutation.mutateAsync({ id: selected.id })
-    } catch (error) {
-      handleErrorResponse(error)
-      return
-    }
-    toast.error('Category deleted')
-    setDeleteOpen(false)
-    if (categories.data.length === 1 && categories.meta.page > 1) {
-      navigate({
-        search: (prev) => ({ ...prev, page: categories.meta.page - 1 }),
-      })
-    }
+    deleteMutation.mutate(
+      { id: selected.id },
+      {
+        onSuccess: () => {
+          toast.success('Category deleted')
+          setDeleteOpen(false)
+          if (categories.data.length === 1 && categories.meta.page > 1) {
+            navigate({
+              search: (prev) => ({ ...prev, page: categories.meta.page - 1 }),
+            })
+          }
+        },
+        onError: (error) => handleErrorResponse(error),
+      },
+    )
   }
 
   // Table columns
@@ -258,7 +282,20 @@ function CategoriesPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium">Categories</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/dashboard"
+            className={cn(buttonVariants({ variant: 'outline', size: 'icon' }))}
+          >
+            <ArrowLeft />
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold">Categories</h1>
+            <p className="text-sm text-muted-foreground">
+              Organize articles into categories
+            </p>
+          </div>
+        </div>
         <Button onClick={openCreate}>
           <Plus />
           <span>Add Category</span>
@@ -303,7 +340,7 @@ function CategoriesPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off">
-            <FieldSet disabled={form.formState.isSubmitting}>
+            <FieldSet disabled={isSaving}>
               <FieldGroup>
                 <Field className="text-center">
                   <FieldLabel>Category Image</FieldLabel>
@@ -311,7 +348,7 @@ function CategoriesPage() {
                     className="mx-auto"
                     key={selected?.id ?? 'new'}
                     fileTypes={['images']}
-                    collection="categories"
+                    collection="image"
                     maxSize={5 * 1000 * 1000}
                     initialFiles={
                       selected?.image ? [selected.image] : undefined
@@ -414,7 +451,7 @@ function CategoriesPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" isLoading={form.formState.isSubmitting}>
+                <Button type="submit" isLoading={isSaving}>
                   {selected ? 'Update Category' : 'Create Category'}
                 </Button>
               </DialogFooter>
@@ -443,7 +480,6 @@ function CategoriesPage() {
             <AlertDialogAction
               variant="destructive"
               isLoading={deleteMutation.isPending}
-              disabled={deleteMutation.isPending}
               onClick={handleDelete}
             >
               Delete

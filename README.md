@@ -1,248 +1,211 @@
-Welcome to your new TanStack Start app!
+# TanStack Start Template
 
-# Getting Started
+A self-hostable full-stack React starter: TanStack Start + Router, a typed oRPC
+API, Postgres via Drizzle, better-auth, BullMQ jobs, transactional email, and
+S3-compatible uploads. Builds to a plain Node server via Nitro.
 
-To run this application:
+Everything runs locally in Docker, and `.env.local` is committed with matching
+defaults — so a fresh clone is five commands from a working app.
 
-```bash
-npm install
-npm run dev
-```
+## Contents
 
-# Building For Production
+1. [Requirements](#requirements)
+2. [Quick start](#quick-start)
+3. [What you get](#what-you-get) — URLs and logins
+4. [Commands](#commands)
+5. [Project layout](#project-layout)
+6. [How a feature fits together](#how-a-feature-fits-together)
+7. [Adding a module](#adding-a-module)
+8. [Environment](#environment)
+9. [Services](#services)
+10. [Deployment](#deployment)
 
-To build this application for production:
+## Requirements
 
-```bash
-npm run build
-```
+- Node 22.21+ or 24.10+ (for `--env-file-if-exists`)
+- pnpm 11+
+- Docker, running
 
-## Testing
-
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-npm run test
-```
-
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
-
-## Linting & Formatting
-
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+## Quick start
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm install
+pnpm services:up      # Postgres, Redis, Mailpit, MinIO
+pnpm db:migrate       # create the tables
+pnpm db:seed          # admin + user accounts
+pnpm dev              # http://localhost:3000
 ```
 
-## T3Env
+No environment setup — `.env.local` is committed and already points at the
+containers.
 
-- You can use T3Env to add type safety to your environment variables.
-- Add Environment variables to the `src/env.mjs` file.
-- Use the environment variables in your code.
+> **Edited `docker-compose.yml`?** Run `docker compose up -d --force-recreate`.
+> A plain `services:up` can leave old containers running with the old config,
+> which shows up as a healthy service the app still can't reach.
 
-### Usage
+## What you get
 
-```ts
-import { env } from '#/env'
+| Service            | URL                                      | Login                                 |
+| ------------------ | ---------------------------------------- | ------------------------------------- |
+| **App**            | http://localhost:3000                    | `admin@example.com` / `password12345` |
+|                    |                                          | `user@example.com` / `password12345`  |
+| **API reference**  | http://localhost:3000/api/docs           | signed-in session                     |
+| **Mailpit** inbox  | http://localhost:8025                    | none                                  |
+| **MinIO** console  | http://localhost:9001                    | `minioadmin` / `minioadmin`           |
+| **Drizzle Studio** | `pnpm db:studio`                         | none                                  |
+| **Email preview**  | `pnpm email:dev` → http://localhost:3005 | none                                  |
 
-console.log(env.VITE_APP_TITLE)
-```
+MinIO exposes **two** ports and they are not interchangeable: `9000` is the S3
+API the app writes to, `9001` is the console you browse. Uploads land in the
+`app` bucket, created automatically.
 
-## Setting up Better Auth
+Nothing leaves your machine — Mailpit swallows all outgoing mail.
 
-1. Generate and set the `BETTER_AUTH_SECRET` environment variable in your `.env.local`:
-
-   ```bash
-   npx -y @better-auth/cli secret
-   ```
-
-2. Visit the [Better Auth documentation](https://www.better-auth.com) to unlock the full potential of authentication in your app.
-
-### Adding a Database (Optional)
-
-Better Auth can work in stateless mode, but to persist user data, add a database:
-
-```typescript
-// src/lib/auth.ts
-import { betterAuth } from 'better-auth'
-import { Pool } from 'pg'
-
-export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
-  // ... rest of config
-})
-```
-
-Then run migrations:
+## Commands
 
 ```bash
-npx -y @better-auth/cli migrate
+# Develop
+pnpm dev              # app on :3000
+pnpm email:dev        # react-email preview on :3005
+
+# Services
+pnpm services:up      # start containers (detached)
+pnpm services:logs    # tail them
+pnpm services:down    # stop them
+
+# Database
+pnpm db:generate      # write a migration from schema changes
+pnpm db:migrate       # apply migrations
+pnpm db:push          # skip migrations, push schema (dev only)
+pnpm db:seed          # admin + user accounts
+pnpm db:studio        # browse data
+
+# Quality — run both before committing
+pnpm typecheck        # tsc --noEmit
+pnpm check            # prettier --write + eslint --fix
+
+# Ship
+pnpm build            # → .output/server/index.mjs
+pnpm start            # run that build
 ```
 
-## Routing
+## Project layout
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from '@tanstack/react-router'
+```
+src/
+  routes/               File-based routes; URL = file path
+    (main)/             Public site + auth pages
+    dashboard/          Signed-in area
+      -components/      Route-local components (the - prefix excludes them)
+    api/                Server handlers: rpc, auth, upload, docs
+    files/              Streams stored media in production
+  orpc/                 API procedures, one file per resource
+  schema/               Zod schemas — inputs, outputs, filters
+  db/
+    schema.ts           Drizzle tables
+    seed.ts             Seed accounts
+  components/
+    ui/                 Styled primitives (button, dialog, table, …)
+    system/             Composite widgets (file uploader, …)
+  lib/
+    env.ts              Validated environment
+    db.ts  redis.ts     Connections
+    orpc.ts             Client + query integration
+    better-auth/        Auth server and client
+    media/              S3 and the media service
+    mailer/             Templates and senders
+    queues/  workers/   BullMQ producers and consumers
+  hooks/  providers/    Shared React state
 ```
 
-Then anywhere in your JSX you can use it like so:
+Import with the `#/*` alias — `#/lib/db`, never `../../lib/db`.
 
-```tsx
-<Link to="/about">About</Link>
+## How a feature fits together
+
+Tracing one list page end to end, which is the shape every module follows:
+
+```
+src/schema/articleSchema.ts     zod: articleSchema, articleInputSchema, filters
+        ↓ input/output contract
+src/orpc/articles.ts            getArticles, createArticle, … (Drizzle queries)
+        ↓ registered in
+src/orpc/router.ts              { articles, categories, users }
+        ↓ served at /api/rpc, typed client in
+src/lib/orpc.ts                 orpc.articles.getArticles.queryOptions()
+        ↓ consumed by
+src/routes/dashboard/articles/index.tsx   loader + useSuspenseQuery + DataTable
 ```
 
-This will create a link that will navigate to the `/about` route.
+The client is fully typed off the router — rename a field in the zod schema and
+the page stops compiling. Mutations invalidate their resource automatically via
+`experimental_defaults` in `src/lib/orpc.ts`, so components never call
+`invalidateQueries`.
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+Background work is deliberately out of band: a procedure calls
+`emailQueue.add(...)` and returns; the worker in `src/lib/workers` sends the mail
+in the same Node process.
 
-### Using A Layout
+## Adding a module
 
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
+Copy `categories` (dialog CRUD) or `articles` (dedicated pages) rather than
+inventing a shape. In order:
 
-Here is an example layout that includes a header:
+1. **Table** — add it to `src/db/schema.ts`, then `pnpm db:generate && pnpm db:migrate`.
+2. **Schemas** — `src/schema/<name>Schema.ts`: output, input, and filter schemas.
+3. **Procedures** — `src/orpc/<name>.ts`, then add it to `src/orpc/router.ts`.
+4. **Cache** — add the create/update/delete entries in `src/lib/orpc.ts`.
+5. **Route** — `src/routes/dashboard/<name>/index.tsx`, with the standard header,
+   table card and pagination.
+6. `pnpm typecheck && pnpm check`.
 
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+Form size decides the UI: ~4–5 fields → dialog on the list page; more, or file
+uploads → separate `add.tsx` and `edit/$id.tsx` sharing a form component.
 
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
+**`CLAUDE.md` is the detailed spec** — procedure anatomy, the three error kinds,
+pagination, media slots, comment style, UI rules. Read it before writing code.
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+## Environment
 
-## Server Functions
+Two files, and **`.env` always wins**:
 
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
+| File           | Committed | Purpose                                      |
+| -------------- | --------- | -------------------------------------------- |
+| `.env.local`   | yes       | Local defaults matching `docker-compose.yml` |
+| `.env`         | no        | Your overrides and every real secret         |
+| `.env.example` | yes       | Reference for the full set, for production   |
 
-```tsx
-import { createServerFn } from '@tanstack/react-start'
+Override one value by creating a `.env` with just that line; everything else
+still falls back to `.env.local`. Never put a real secret in `.env.local` — it's
+in git, and the committed `BETTER_AUTH_SECRET` is a throwaway.
 
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
+Variables are validated at startup in `src/lib/env.ts`, so a missing or malformed
+one fails immediately with a list of what's wrong. Adding a variable means
+updating `env.ts`, `.env.local` and `.env.example` together.
 
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
+## Services
 
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
+`docker-compose.yml` runs everything the app talks to.
 
-  return <div>Server time: {time}</div>
-}
-```
+| Service  | Port          | Purpose                                  |
+| -------- | ------------- | ---------------------------------------- |
+| Postgres | `5432`        | database `app`, user/password `postgres` |
+| Redis    | `6379`        | BullMQ queues                            |
+| Mailpit  | `1025`/`8025` | SMTP sink, then its inbox UI             |
+| MinIO    | `9000`/`9001` | S3 API, then its console                 |
 
-## API Routes
+## Deployment
 
-You can create API routes by using the `server` property in your route definitions:
+`pnpm build` emits a self-contained Node server at `.output/server/index.mjs`;
+`pnpm start` runs it.
 
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
+Assume a **long-lived process** — BullMQ workers, the pooled SMTP transport and
+the S3 client all live inside it, so this does not target edge or serverless
+runtimes.
 
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
+To deploy: provide the environment (a real `.env` or injected variables), set
+`BETTER_AUTH_URL` to your actual origin, run `pnpm db:migrate`, and point
+Postgres, Redis and S3 at managed instances.
 
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+`BETTER_AUTH_URL` matters beyond auth — in production, uploads are served from
+`{BETTER_AUTH_URL}/files/{key}`, while development reads them straight from the
+bucket.

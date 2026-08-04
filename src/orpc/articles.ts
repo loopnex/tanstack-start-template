@@ -134,6 +134,11 @@ const createArticle = authorized
         })
         .returning()
 
+      if (!row)
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'Failed to create article',
+        })
+
       if (input.categoryIds.length) {
         await tx.insert(articleCategories).values(
           input.categoryIds.map((categoryId) => ({
@@ -176,6 +181,7 @@ const updateArticle = authorized
       .select()
       .from(articlesTable)
       .where(eq(articlesTable.id, id))
+      .limit(1)
 
     if (!existing)
       throw new ORPCError('NOT_FOUND', { message: 'Article not found' })
@@ -209,6 +215,11 @@ const updateArticle = authorized
         })
         .where(eq(articlesTable.id, id))
         .returning()
+
+      if (!row)
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'Failed to update article',
+        })
 
       await tx
         .delete(articleCategories)
@@ -251,6 +262,7 @@ const deleteArticle = authorized
       .select()
       .from(articlesTable)
       .where(eq(articlesTable.id, input.id))
+      .limit(1)
     if (!article)
       throw new ORPCError('NOT_FOUND', { message: 'Article not found' })
 

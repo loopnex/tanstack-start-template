@@ -9,72 +9,102 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as mainRouteRouteImport } from './routes/(main)/route'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as mainIndexRouteImport } from './routes/(main)/index'
-import { Route as FilesSplatRouteImport } from './routes/files/$'
-import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as mainAuthRouteRouteImport } from './routes/(main)/auth/route'
-import { Route as DashboardUsersIndexRouteImport } from './routes/dashboard/users/index'
-import { Route as DashboardCategoriesIndexRouteImport } from './routes/dashboard/categories/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as FilesSplatRouteImport } from './routes/files/$'
+import { Route as mainAuthRequestPasswordResetRouteImport } from './routes/(main)/auth/request-password-reset'
+import { Route as mainAuthResetPasswordRouteImport } from './routes/(main)/auth/reset-password'
+import { Route as mainAuthSignInRouteImport } from './routes/(main)/auth/sign-in'
+import { Route as mainAuthSignUpRouteImport } from './routes/(main)/auth/sign-up'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDocsSplatRouteImport } from './routes/api/docs/$'
+import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
+import { Route as ApiUploadSplatRouteImport } from './routes/api/upload/$'
 import { Route as DashboardArticlesIndexRouteImport } from './routes/dashboard/articles/index'
 import { Route as DashboardArticlesAddRouteImport } from './routes/dashboard/articles/add'
-import { Route as ApiUploadSplatRouteImport } from './routes/api/upload/$'
-import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
-import { Route as ApiDocsSplatRouteImport } from './routes/api/docs/$'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as mainAuthSignUpRouteImport } from './routes/(main)/auth/sign-up'
-import { Route as mainAuthSignInRouteImport } from './routes/(main)/auth/sign-in'
-import { Route as mainAuthResetPasswordRouteImport } from './routes/(main)/auth/reset-password'
-import { Route as mainAuthRequestPasswordResetRouteImport } from './routes/(main)/auth/request-password-reset'
+import { Route as DashboardCategoriesIndexRouteImport } from './routes/dashboard/categories/index'
+import { Route as DashboardUsersIndexRouteImport } from './routes/dashboard/users/index'
 import { Route as DashboardArticlesEditIdRouteImport } from './routes/dashboard/articles/edit/$id'
 
-const DashboardRouteRoute = DashboardRouteRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardIndexRoute = DashboardIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DashboardRouteRoute,
+const DashboardRouteRoute = DashboardRouteRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const mainIndexRoute = mainIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => mainRouteRoute,
 } as any)
-const FilesSplatRoute = FilesSplatRouteImport.update({
-  id: '/files/$',
-  path: '/files/$',
-  getParentRoute: () => rootRouteImport,
+const mainAuthRouteRoute = mainAuthRouteRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const mainAuthRouteRoute = mainAuthRouteRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => mainRouteRoute,
+const FilesSplatRoute = FilesSplatRouteImport.update({
+  id: '/files/$',
+  path: '/files/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
-  id: '/users/',
-  path: '/users/',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const DashboardCategoriesIndexRoute =
-  DashboardCategoriesIndexRouteImport.update({
-    id: '/categories/',
-    path: '/categories/',
-    getParentRoute: () => DashboardRouteRoute,
+const mainAuthRequestPasswordResetRoute =
+  mainAuthRequestPasswordResetRouteImport.update({
+    id: '/request-password-reset',
+    path: '/request-password-reset',
+    getParentRoute: () => mainAuthRouteRoute,
   } as any)
+const mainAuthResetPasswordRoute = mainAuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => mainAuthRouteRoute,
+} as any)
+const mainAuthSignInRoute = mainAuthSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => mainAuthRouteRoute,
+} as any)
+const mainAuthSignUpRoute = mainAuthSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => mainAuthRouteRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsSplatRoute = ApiDocsSplatRouteImport.update({
+  id: '/api/docs/$',
+  path: '/api/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
+  id: '/api/rpc/$',
+  path: '/api/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUploadSplatRoute = ApiUploadSplatRouteImport.update({
+  id: '/api/upload/$',
+  path: '/api/upload/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardArticlesIndexRoute = DashboardArticlesIndexRouteImport.update({
   id: '/articles/',
   path: '/articles/',
@@ -85,47 +115,17 @@ const DashboardArticlesAddRoute = DashboardArticlesAddRouteImport.update({
   path: '/articles/add',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const ApiUploadSplatRoute = ApiUploadSplatRouteImport.update({
-  id: '/api/upload/$',
-  path: '/api/upload/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
-  id: '/api/rpc/$',
-  path: '/api/rpc/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDocsSplatRoute = ApiDocsSplatRouteImport.update({
-  id: '/api/docs/$',
-  path: '/api/docs/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const mainAuthSignUpRoute = mainAuthSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => mainAuthRouteRoute,
-} as any)
-const mainAuthSignInRoute = mainAuthSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => mainAuthRouteRoute,
-} as any)
-const mainAuthResetPasswordRoute = mainAuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => mainAuthRouteRoute,
-} as any)
-const mainAuthRequestPasswordResetRoute =
-  mainAuthRequestPasswordResetRouteImport.update({
-    id: '/request-password-reset',
-    path: '/request-password-reset',
-    getParentRoute: () => mainAuthRouteRoute,
+const DashboardCategoriesIndexRoute =
+  DashboardCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardArticlesEditIdRoute = DashboardArticlesEditIdRouteImport.update({
   id: '/articles/edit/$id',
   path: '/articles/edit/$id',
@@ -274,13 +274,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/(main)': {
       id: '/(main)'
       path: ''
@@ -288,12 +281,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/': {
-      id: '/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/(main)/': {
       id: '/(main)/'
@@ -302,12 +295,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainIndexRouteImport
       parentRoute: typeof mainRouteRoute
     }
-    '/files/$': {
-      id: '/files/$'
-      path: '/files/$'
-      fullPath: '/files/$'
-      preLoaderRoute: typeof FilesSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/(main)/auth': {
+      id: '/(main)/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof mainAuthRouteRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/profile': {
       id: '/dashboard/profile'
@@ -316,26 +316,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/(main)/auth': {
-      id: '/(main)/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof mainAuthRouteRouteImport
-      parentRoute: typeof mainRouteRoute
+    '/files/$': {
+      id: '/files/$'
+      path: '/files/$'
+      fullPath: '/files/$'
+      preLoaderRoute: typeof FilesSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/users/': {
-      id: '/dashboard/users/'
-      path: '/users'
-      fullPath: '/dashboard/users/'
-      preLoaderRoute: typeof DashboardUsersIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
+    '/(main)/auth/request-password-reset': {
+      id: '/(main)/auth/request-password-reset'
+      path: '/request-password-reset'
+      fullPath: '/auth/request-password-reset'
+      preLoaderRoute: typeof mainAuthRequestPasswordResetRouteImport
+      parentRoute: typeof mainAuthRouteRoute
     }
-    '/dashboard/categories/': {
-      id: '/dashboard/categories/'
-      path: '/categories'
-      fullPath: '/dashboard/categories/'
-      preLoaderRoute: typeof DashboardCategoriesIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
+    '/(main)/auth/reset-password': {
+      id: '/(main)/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof mainAuthResetPasswordRouteImport
+      parentRoute: typeof mainAuthRouteRoute
+    }
+    '/(main)/auth/sign-in': {
+      id: '/(main)/auth/sign-in'
+      path: '/sign-in'
+      fullPath: '/auth/sign-in'
+      preLoaderRoute: typeof mainAuthSignInRouteImport
+      parentRoute: typeof mainAuthRouteRoute
+    }
+    '/(main)/auth/sign-up': {
+      id: '/(main)/auth/sign-up'
+      path: '/sign-up'
+      fullPath: '/auth/sign-up'
+      preLoaderRoute: typeof mainAuthSignUpRouteImport
+      parentRoute: typeof mainAuthRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/docs/$': {
+      id: '/api/docs/$'
+      path: '/api/docs/$'
+      fullPath: '/api/docs/$'
+      preLoaderRoute: typeof ApiDocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rpc/$': {
+      id: '/api/rpc/$'
+      path: '/api/rpc/$'
+      fullPath: '/api/rpc/$'
+      preLoaderRoute: typeof ApiRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/upload/$': {
+      id: '/api/upload/$'
+      path: '/api/upload/$'
+      fullPath: '/api/upload/$'
+      preLoaderRoute: typeof ApiUploadSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/articles/': {
       id: '/dashboard/articles/'
@@ -351,61 +393,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardArticlesAddRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/api/upload/$': {
-      id: '/api/upload/$'
-      path: '/api/upload/$'
-      fullPath: '/api/upload/$'
-      preLoaderRoute: typeof ApiUploadSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dashboard/categories/': {
+      id: '/dashboard/categories/'
+      path: '/categories'
+      fullPath: '/dashboard/categories/'
+      preLoaderRoute: typeof DashboardCategoriesIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
-    '/api/rpc/$': {
-      id: '/api/rpc/$'
-      path: '/api/rpc/$'
-      fullPath: '/api/rpc/$'
-      preLoaderRoute: typeof ApiRpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/docs/$': {
-      id: '/api/docs/$'
-      path: '/api/docs/$'
-      fullPath: '/api/docs/$'
-      preLoaderRoute: typeof ApiDocsSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(main)/auth/sign-up': {
-      id: '/(main)/auth/sign-up'
-      path: '/sign-up'
-      fullPath: '/auth/sign-up'
-      preLoaderRoute: typeof mainAuthSignUpRouteImport
-      parentRoute: typeof mainAuthRouteRoute
-    }
-    '/(main)/auth/sign-in': {
-      id: '/(main)/auth/sign-in'
-      path: '/sign-in'
-      fullPath: '/auth/sign-in'
-      preLoaderRoute: typeof mainAuthSignInRouteImport
-      parentRoute: typeof mainAuthRouteRoute
-    }
-    '/(main)/auth/reset-password': {
-      id: '/(main)/auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof mainAuthResetPasswordRouteImport
-      parentRoute: typeof mainAuthRouteRoute
-    }
-    '/(main)/auth/request-password-reset': {
-      id: '/(main)/auth/request-password-reset'
-      path: '/request-password-reset'
-      fullPath: '/auth/request-password-reset'
-      preLoaderRoute: typeof mainAuthRequestPasswordResetRouteImport
-      parentRoute: typeof mainAuthRouteRoute
+    '/dashboard/users/': {
+      id: '/dashboard/users/'
+      path: '/users'
+      fullPath: '/dashboard/users/'
+      preLoaderRoute: typeof DashboardUsersIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/articles/edit/$id': {
       id: '/dashboard/articles/edit/$id'
