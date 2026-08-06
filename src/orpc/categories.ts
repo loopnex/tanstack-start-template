@@ -74,16 +74,14 @@ const getCategories = authorized
         .offset(skip),
       db.$count(categoriesTable, where),
     ])
-    const imageMap = await mediaService.findForIds(
+    const images = await mediaService.findForIds(
       MODEL,
       rows.map((r) => r.id),
       COLLECTION,
     )
     const data = rows.map((r) => ({
       ...r,
-      image: imageMap.has(r.id)
-        ? mediaService.toResult(imageMap.get(r.id)!)
-        : null,
+      image: images.get(r.id) ?? null,
     }))
     return { data, meta: { page, limit, total } }
   })
@@ -124,9 +122,10 @@ const getCategory = authorized
     if (!category)
       throw new ORPCError('NOT_FOUND', { message: 'Category not found' })
 
-    const image = await mediaService.findOne(MODEL, category.id, COLLECTION)
-
-    return { ...category, image: image ? mediaService.toResult(image) : null }
+    return {
+      ...category,
+      image: await mediaService.findOne(MODEL, category.id, COLLECTION),
+    }
   })
 
 // Create Category
@@ -166,13 +165,15 @@ const createCategory = authorized
         message: 'Failed to create category',
       })
 
-    const img = await mediaService.sync(
-      MODEL,
-      category.id,
-      COLLECTION,
-      input.imageMediaId,
-    )
-    return { ...category, image: img ? mediaService.toResult(img) : null }
+    return {
+      ...category,
+      image: await mediaService.sync(
+        MODEL,
+        category.id,
+        COLLECTION,
+        input.imageMediaId,
+      ),
+    }
   })
 
 // Update Category
@@ -221,13 +222,14 @@ const updateCategory = authorized
       .where(eq(categoriesTable.id, id))
       .returning()
 
+    // Empty when the row was deleted after the existence check above
     if (!category)
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'Failed to update category',
-      })
+      throw new ORPCError('NOT_FOUND', { message: 'Category not found' })
 
-    const img = await mediaService.sync(MODEL, id, COLLECTION, imageMediaId)
-    return { ...category, image: img ? mediaService.toResult(img) : null }
+    return {
+      ...category,
+      image: await mediaService.sync(MODEL, id, COLLECTION, imageMediaId),
+    }
   })
 
 // Delete Category

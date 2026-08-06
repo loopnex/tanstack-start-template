@@ -24,7 +24,8 @@ export const Pagination = ({
 }: PaginationProps) => {
   const { limit, total } = meta
 
-  if (total <= PAGE_SIZES[0]) return null
+  // Hidden only while the list fits the smallest page size at its default
+  if (total <= PAGE_SIZES[0] && limit === PAGE_SIZES[0]) return null
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
   // Clamp a possibly-stale page (e.g. a hand-edited URL) back into range
@@ -33,8 +34,7 @@ export const Pagination = ({
   const firstItem = (page - 1) * limit + 1
   const lastItem = Math.min(total, page * limit)
 
-  // Changing the page size resets to page 1 (the consumer's onLimitChange owns
-  // the reset, so we don't also call onPageChange — that would double-navigate)
+  // Page size change; onLimitChange resets the page
   const handleLimitChange = (value: string | null) => {
     if (!value) return
     onLimitChange(Number(value))

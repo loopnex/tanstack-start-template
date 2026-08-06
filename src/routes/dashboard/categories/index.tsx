@@ -179,7 +179,7 @@ function CategoriesPage() {
         toast.success(selected ? 'Category updated' : 'Category created')
         setFormOpen(false)
       },
-      onError: (error: unknown) => handleErrorResponse(error, form.setError),
+      onError: (error: unknown) => handleErrorResponse(error, form),
     }
 
     if (selected) {
@@ -255,23 +255,19 @@ function CategoriesPage() {
             <EllipsisVertical />
           </DropdownTrigger>
           <DropdownItems>
-            <DropdownItem>
-              <button onClick={() => openEdit(row.original)}>
-                <Pencil />
-                <span>Edit</span>
-              </button>
+            <DropdownItem onClick={() => openEdit(row.original)}>
+              <Pencil />
+              <span>Edit</span>
             </DropdownItem>
-            <DropdownItem>
-              <button
-                className="text-destructive-foreground"
-                onClick={() => {
-                  setSelected(row.original)
-                  setDeleteOpen(true)
-                }}
-              >
-                <Trash2 />
-                <span>Delete</span>
-              </button>
+            <DropdownItem
+              className="text-destructive-foreground"
+              onClick={() => {
+                setSelected(row.original)
+                setDeleteOpen(true)
+              }}
+            >
+              <Trash2 />
+              <span>Delete</span>
             </DropdownItem>
           </DropdownItems>
         </Dropdown>
@@ -303,7 +299,7 @@ function CategoriesPage() {
       </div>
 
       <div className="rounded-xl border bg-card pb-6">
-        <div className="flex items-center justify-between gap-4 p-6">
+        <div className="flex items-center gap-4 p-6">
           <InputGroup className="max-w-sm">
             <InputGroupAddon>
               <Search />
@@ -355,6 +351,9 @@ function CategoriesPage() {
                     }
                     onUploadComplete={(r) => {
                       form.setValue('imageMediaId', r.mediaId)
+                    }}
+                    onFileRemove={() => {
+                      form.setValue('imageMediaId', undefined)
                     }}
                   />
                 </Field>

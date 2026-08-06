@@ -311,9 +311,10 @@ function BusyOverlay({ value }: { value: number }) {
   )
 }
 
-// Single-file preview — fills the parent's height when it's constrained
-// (object-cover crops instead of overflowing); keeps its natural aspect
-// ratio when the parent height is left flexible.
+/**
+ * Single-file preview. Fills a constrained parent height by cropping, and
+ * keeps its natural aspect ratio when the height is flexible.
+ */
 const SinglePreview = React.memo(function ({
   entry,
   onRemove,
@@ -612,8 +613,7 @@ export function FileUploader({
       if (entry.status === 'complete' && entry.result) {
         const result = entry.result
 
-        // No `file` means it came from initialFiles and is already attached,
-        // so the slot is cleared server-side on save instead
+        // Attached rows have no file; the slot is cleared server-side on save
         if (!entry.file) {
           dropEntry(entry)
           onFileRemove?.(result)
@@ -737,8 +737,7 @@ export function FileUploader({
         </Label>
       )}
 
-      {/* Single mode — once a file exists the full-width preview replaces the
-          drop zone; removing it (deletes from storage if uploaded) brings it back. */}
+      {/* Single mode — the preview replaces the drop zone while a file exists */}
       {!multiple && entries[0] ? (
         <SinglePreview entry={entries[0]} onRemove={removeEntry} />
       ) : (

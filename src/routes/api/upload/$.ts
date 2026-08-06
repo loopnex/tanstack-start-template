@@ -17,13 +17,13 @@ import { eq } from 'drizzle-orm'
 import path from 'node:path'
 import { ulid } from 'ulid'
 
-// ≤ threshold → one presigned PUT; above → multipart.
-const MULTIPART_THRESHOLD = 100 * 1024 * 1024
-const TARGET_PART_SIZE = 10 * 1024 * 1024 // ≥ S3's 5 MiB part minimum
+// ≤ threshold → one presigned PUT; above → multipart
+const MULTIPART_THRESHOLD = 100 * 1000 * 1000
+const TARGET_PART_SIZE = 10 * 1000 * 1000 // ≥ S3's 5 MiB part minimum
 const MAX_PARTS = 10_000 // S3 hard limit on parts per multipart upload
 
-// Default ceiling; overridden per-upload by the <FileUploader maxSize> prop.
-const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100 MB
+// Default ceiling, overridden per-upload by the maxSize prop
+const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1000 * 1000
 
 const COLLECTION_RE = /^[a-z0-9-]+$/
 
@@ -34,9 +34,10 @@ const json = (data: unknown, status = 200) => Response.json(data, { status })
 // The action is the last path segment, e.g. /api/upload/sign.
 const action = (url: URL) => url.pathname.split('/').filter(Boolean).pop() ?? ''
 
-// {collection}/{slug}-{ulid} — extensionless so the dev static handler never
-// grabs the read URL; Content-Type is read back from the stored object. Client
-// input is never used raw as a path.
+/**
+ * Builds {collection}/{slug}-{ulid}. Extensionless, because the dev static
+ * handler grabs any read URL ending in a file extension.
+ */
 function buildKey(filename: string, collection: string) {
   const name = path.basename(filename, path.extname(filename))
   return `${collection}/${slugify(name, { decamelize: false }) || 'file'}-${ulid()}`
@@ -103,7 +104,7 @@ async function sign(request: Request) {
   }
 
   const { uploadId } = await createMultipartUpload(key, contentType)
-  // Scale the part size up for very large files so we never exceed MAX_PARTS.
+  // Larger parts for very large files, to stay within MAX_PARTS
   const partSize = Math.max(TARGET_PART_SIZE, Math.ceil(body.size / MAX_PARTS))
   const partCount = Math.ceil(body.size / partSize)
   return json({ mode: 'multipart', key, uploadId, partSize, partCount })
@@ -132,8 +133,10 @@ async function signPartUrls(request: Request) {
   })
 }
 
-// Complete the MPU (if any), then record the row using storage's authoritative
-// size/type, not the client's.
+/**
+ * Completes the multipart upload if there is one, then records the row using
+ * storage's size and type rather than the client's.
+ */
 async function complete(request: Request) {
   const body = (await request.json()) as {
     key?: string
@@ -230,16 +233,27 @@ export const Route = createFileRoute('/api/upload/$')({
     handlers: {
       POST: ({ request }) =>
         handle(request, (url) => {
-          if (action(url) === 'sign') return sign(request)
-          if (action(url) === 'sign-parts') return signPartUrls(request)
-          if (action(url) === 'complete') return complete(request)
-          return json({ error: 'unknown action' }, 404)
+          switch (action(url)) {
+            case 'sign':
+              return sign(request)
+            case 'sign-parts':
+              return signPartUrls(request)
+            case 'complete':
+              return complete(request)
+            default:
+              return json({ error: 'unknown action' }, 404)
+          }
         }),
       DELETE: ({ request }) =>
         handle(request, (url) => {
-          if (action(url) === 'abort') return abort(url)
-          if (action(url) === 'delete') return remove(url)
-          return json({ error: 'unknown action' }, 404)
+          switch (action(url)) {
+            case 'abort':
+              return abort(url)
+            case 'delete':
+              return remove(url)
+            default:
+              return json({ error: 'unknown action' }, 404)
+          }
         }),
     },
   },

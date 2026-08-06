@@ -13,8 +13,6 @@ export interface MenuItem {
   url?: string
   baseUrl?: string
   submenu?: SubMenuItem[]
-  // Hidden from non-admins
-  adminOnly?: boolean
 }
 
 export interface MenuGroup {
@@ -63,7 +61,6 @@ export const menuGroups: MenuGroup[] = [
         title: 'Users',
         icon: <UserRound className="icon" />,
         url: '/dashboard/users',
-        adminOnly: true,
       },
     ],
   },

@@ -13,7 +13,7 @@ import {
   userUpdateSchema,
 } from '#/schema/userSchema'
 import { ORPCError } from '@orpc/server'
-import { and, desc, eq, ilike, not, or } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, isNotNull, not, or } from 'drizzle-orm'
 import * as z from 'zod'
 
 // Get Users (Paginated)
@@ -50,6 +50,24 @@ const getUsers = adminOnly
     ])
 
     return { data: rows, meta: { page, limit, total } }
+  })
+
+// Get User Roles (distinct roles currently in use)
+const getUserRoles = adminOnly
+  .route({
+    method: 'GET',
+    path: '/users/roles',
+    summary: 'List roles in use',
+    tags: ['Users'],
+  })
+  .output(z.array(z.string()))
+  .handler(async () => {
+    const rows = await db
+      .selectDistinct({ role: usersTable.role })
+      .from(usersTable)
+      .where(isNotNull(usersTable.role))
+      .orderBy(asc(usersTable.role))
+    return rows.flatMap((r) => (r.role ? [r.role] : []))
   })
 
 // Get User
@@ -98,15 +116,14 @@ const createUser = adminOnly
         name: input.name,
         email: input.email,
         password: input.password,
-        role: input.role,
       },
     })
 
     const [created] = await db
-      .select()
-      .from(usersTable)
+      .update(usersTable)
+      .set({ role: input.role })
       .where(eq(usersTable.id, user.id))
-      .limit(1)
+      .returning()
 
     if (!created)
       throw new ORPCError('INTERNAL_SERVER_ERROR', {
@@ -155,21 +172,15 @@ const updateUser = adminOnly
       body: { userId: id, data: { name, email } },
     })
 
-    await auth.api.setRole({
-      headers: context.headers,
-      body: { userId: id, role },
-    })
-
     const [updated] = await db
-      .select()
-      .from(usersTable)
+      .update(usersTable)
+      .set({ role })
       .where(eq(usersTable.id, id))
-      .limit(1)
+      .returning()
 
+    // Empty when the row was deleted after the existence check above
     if (!updated)
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'Failed to update user',
-      })
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
     return updated
   })
@@ -191,6 +202,8 @@ const banUser = adminOnly
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, id))
+      .limit(1)
+
     if (!existing)
       throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
@@ -215,10 +228,9 @@ const banUser = adminOnly
       .where(eq(usersTable.id, id))
       .limit(1)
 
+    // Empty when the row was deleted after the existence check above
     if (!updated)
-      throw new ORPCError('INTERNAL_SERVER_ERROR', {
-        message: 'Failed to update user',
-      })
+      throw new ORPCError('NOT_FOUND', { message: 'User not found' })
 
     return updated
   })
@@ -265,6 +277,7 @@ const deleteUser = adminOnly
 
 export const users = {
   getUsers,
+  getUserRoles,
   getUser,
   createUser,
   updateUser,

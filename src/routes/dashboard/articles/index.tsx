@@ -15,6 +15,7 @@ import {
   Dropdown,
   DropdownItem,
   DropdownItems,
+  DropdownLinkItem,
   DropdownTrigger,
 } from '#/components/ui/dropdown'
 import {
@@ -98,9 +99,10 @@ function ArticlesPage() {
         onSuccess: () => {
           toast.success('Article deleted')
           setDeleteOpen(false)
-          const currentPage = search.page ?? 1
-          if (articles.data.length === 1 && currentPage > 1) {
-            navigate({ search: (prev) => ({ ...prev, page: currentPage - 1 }) })
+          if (articles.data.length === 1 && articles.meta.page > 1) {
+            navigate({
+              search: (prev) => ({ ...prev, page: articles.meta.page - 1 }),
+            })
           }
         },
         onError: (error) => handleErrorResponse(error),
@@ -161,26 +163,26 @@ function ArticlesPage() {
             <EllipsisVertical />
           </DropdownTrigger>
           <DropdownItems>
-            <DropdownItem>
-              <Link
-                to="/dashboard/articles/edit/$id"
-                params={{ id: row.original.id }}
-              >
-                <Pencil className="icon" />
-                <span>Edit</span>
-              </Link>
-            </DropdownItem>
-            <DropdownItem>
-              <button
-                className="text-destructive-foreground"
-                onClick={() => {
-                  setSelected(row.original)
-                  setDeleteOpen(true)
-                }}
-              >
-                <Trash2 className="icon" />
-                <span>Delete</span>
-              </button>
+            <DropdownLinkItem
+              render={
+                <Link
+                  to="/dashboard/articles/edit/$id"
+                  params={{ id: row.original.id }}
+                />
+              }
+            >
+              <Pencil />
+              <span>Edit</span>
+            </DropdownLinkItem>
+            <DropdownItem
+              className="text-destructive-foreground"
+              onClick={() => {
+                setSelected(row.original)
+                setDeleteOpen(true)
+              }}
+            >
+              <Trash2 />
+              <span>Delete</span>
             </DropdownItem>
           </DropdownItems>
         </Dropdown>
@@ -212,7 +214,7 @@ function ArticlesPage() {
       </div>
 
       <div className="rounded-xl border bg-card pb-6">
-        <div className="flex items-center justify-between gap-4 p-6">
+        <div className="flex items-center gap-4 p-6">
           <InputGroup className="max-w-sm">
             <InputGroupAddon>
               <Search />

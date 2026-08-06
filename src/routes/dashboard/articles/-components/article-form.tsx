@@ -45,7 +45,7 @@ interface ArticleFormProps {
   submitLabel: string
   onSubmit: (
     values: ArticleInputSchemaType,
-    setError: UseFormReturn<ArticleInputSchemaType>['setError'],
+    form: UseFormReturn<ArticleInputSchemaType>,
   ) => void
   // The page owns the mutation, so it reports the in-flight state
   isPending: boolean
@@ -69,7 +69,7 @@ export function ArticleForm({
 
   return (
     <form
-      onSubmit={form.handleSubmit((v) => onSubmit(v, form.setError))}
+      onSubmit={form.handleSubmit((v) => onSubmit(v, form))}
       autoComplete="off"
     >
       <FieldSet disabled={isPending}>
@@ -289,7 +289,9 @@ export function ArticleForm({
                   onUploadComplete={(r) => {
                     form.setValue('thumbnailMediaId', r.mediaId)
                   }}
-                  maxFiles={5}
+                  onFileRemove={() => {
+                    form.setValue('thumbnailMediaId', undefined)
+                  }}
                 />
               </CardContent>
             </Card>

@@ -85,8 +85,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply h-full;
+  }
   body {
-    @apply bg-background font-inter text-foreground;
+    @apply h-full bg-background font-inter text-foreground;
   }
 }
 

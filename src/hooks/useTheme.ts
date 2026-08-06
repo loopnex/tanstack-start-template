@@ -3,13 +3,12 @@ import { useSyncExternalStore } from 'react'
 export type Theme = 'light' | 'dark' | 'system'
 
 /**
- * Module-level store so every useTheme() caller shares one value and one OS-preference listener.
- * The inline THEME_INIT_SCRIPT already applied the correct class before hydration, so we read the value here without re-applying.
+ * Module-level store, so every caller shares one value and one OS-preference
+ * listener. The theme class is already applied before hydration.
  */
 const listeners = new Set<() => void>()
 let theme: Theme = 'system'
-// Held in a module variable so the browser can't garbage-collect it and silently
-// stop firing the 'change' event.
+// Module-scoped, otherwise the browser can garbage-collect the listener
 const darkQuery =
   typeof window !== 'undefined'
     ? window.matchMedia('(prefers-color-scheme: dark)')

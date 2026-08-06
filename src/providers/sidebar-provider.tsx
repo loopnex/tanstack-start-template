@@ -44,7 +44,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     setSidebarHtmlAttr(value)
     try {
       localStorage.setItem('sidebar', String(value))
-    } catch {}
+    } catch {
+      // Private-mode storage failure; the sidebar just won't persist
+    }
   }
 
   const toggleSidebar = () => {

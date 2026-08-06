@@ -1,3 +1,4 @@
+import ImpersonationBanner from '#/components/system/impersonation-banner'
 import NotFound from '#/components/system/not-found'
 import { SidebarProvider } from '#/providers/sidebar-provider'
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
@@ -26,16 +27,19 @@ export const Route = createFileRoute('/dashboard')({
 function DashboardLayout() {
   return (
     <SidebarProvider>
-      <div className="fixed flex size-full">
-        <Sidebar />
-        <div className="flex w-full flex-col overflow-hidden">
-          <Header />
-          <main className="grid grow overflow-y-auto bg-muted py-6 dark:bg-background">
-            <div className="container">
-              <Outlet />
-            </div>
-          </main>
-          {/* Notification Side Panel Here */}
+      <div className="fixed flex size-full flex-col">
+        <ImpersonationBanner />
+        <div className="flex w-full grow overflow-hidden">
+          <Sidebar />
+          <div className="flex w-full flex-col overflow-hidden">
+            <Header />
+            <main className="grid grow overflow-y-auto bg-muted py-6 dark:bg-background">
+              <div className="container">
+                <Outlet />
+              </div>
+            </main>
+            {/* Notification Side Panel Here */}
+          </div>
         </div>
       </div>
     </SidebarProvider>

@@ -44,7 +44,7 @@ function EditArticlePage() {
   // Update handler
   const onSubmit = (
     values: ArticleInputSchemaType,
-    setError: UseFormReturn<ArticleInputSchemaType>['setError'],
+    form: UseFormReturn<ArticleInputSchemaType>,
   ) => {
     updateMutation.mutate(
       { id, ...values },
@@ -53,7 +53,7 @@ function EditArticlePage() {
           toast.success('Article updated')
           navigate({ to: '/dashboard/articles' })
         },
-        onError: (error) => handleErrorResponse(error, setError),
+        onError: (error) => handleErrorResponse(error, form),
       },
     )
   }

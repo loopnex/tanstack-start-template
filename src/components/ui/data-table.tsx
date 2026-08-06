@@ -4,9 +4,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { useState } from 'react'
 
-// Table Props Interface
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -18,19 +16,10 @@ export const DataTable = <TData, TValue>({
   data,
   emptyMessage,
 }: DataTableProps<TData, TValue>) => {
-  // Row selection state
-  const [rowSelection, setRowSelection] = useState({})
-
-  // Init table
   const table = useReactTable({
     data,
     columns,
-    state: {
-      rowSelection,
-    },
     manualPagination: true,
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
   })
 
@@ -59,11 +48,7 @@ export const DataTable = <TData, TValue>({
         <tbody className="divide-y">
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted/50"
-                data-state={row.getIsSelected() && 'selected'}
-              >
+              <tr key={row.id} className="transition-colors hover:bg-muted/50">
                 {row.getVisibleCells().map((cell) => (
                   <td
                     className="max-w-57.5 truncate px-6 py-2.5 text-sm"

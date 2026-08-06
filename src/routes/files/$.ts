@@ -1,9 +1,10 @@
 import { getObject } from '#/lib/media/s3'
 import { createFileRoute } from '@tanstack/react-router'
 
-// Streams stored media for /files/{key}. Only used in production — in dev,
-// objectPublicUrl returns a direct S3 URL so this route is never hit.
-// Keys are ULID-unique so cache forever.
+/**
+ * Streams stored media for /files/{key}. Production only, since dev reads
+ * straight from S3. Keys are ULID-unique, so responses cache forever.
+ */
 async function serve(request: Request) {
   const url = new URL(request.url)
   const key = decodeURIComponent(url.pathname.replace(/^\/files\//, ''))

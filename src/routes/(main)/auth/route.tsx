@@ -1,4 +1,3 @@
-import NotFound from '#/components/system/not-found'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import * as z from 'zod'
 
@@ -20,13 +19,6 @@ export const Route = createFileRoute('/(main)/auth')({
     }
   },
   component: AuthLayout,
-  notFoundComponent: () => {
-    return (
-      <div className="grid h-full place-items-center">
-        <NotFound />
-      </div>
-    )
-  },
 })
 
 function AuthLayout() {

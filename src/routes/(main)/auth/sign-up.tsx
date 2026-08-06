@@ -25,7 +25,7 @@ import type { SignUpSchemaType } from '#/schema/authSchema'
 import { signUpSchema } from '#/schema/authSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { Building, Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
@@ -41,7 +41,7 @@ function SignUpPage() {
 
   const form = useForm({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', organizationName: '', password: '' },
+    defaultValues: { name: '', email: '', password: '' },
   })
 
   const onSubmit = async (values: SignUpSchemaType) => {
@@ -109,29 +109,6 @@ function SignUpPage() {
                         type="email"
                         autoComplete="email"
                         placeholder="john@example.com"
-                        aria-invalid={fieldState.invalid}
-                        {...field}
-                      />
-                    </InputGroup>
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-              <Controller
-                name="organizationName"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field>
-                    <FieldLabel optional htmlFor="organizationName">
-                      Organization Name
-                    </FieldLabel>
-                    <InputGroup>
-                      <InputGroupAddon>
-                        <Building />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        id="organizationName"
-                        placeholder="Acme Inc"
                         aria-invalid={fieldState.invalid}
                         {...field}
                       />

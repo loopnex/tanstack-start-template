@@ -4,6 +4,7 @@ import {
   Dropdown,
   DropdownItem,
   DropdownItems,
+  DropdownLinkItem,
   DropdownTrigger,
 } from '#/components/ui/dropdown'
 import type { auth } from '#/lib/better-auth/auth'
@@ -53,23 +54,17 @@ const ProfileDropdown = ({ session }: { session: Session }) => {
         <ChevronDown className="opacity-60" aria-hidden="true" />
       </DropdownTrigger>
       <DropdownItems>
-        <DropdownItem>
-          <Link to="/dashboard">
-            <LayoutGrid className="icon opacity-60" aria-hidden="true" />
-            <span>Dashboard</span>
-          </Link>
-        </DropdownItem>
-        <DropdownItem>
-          <Link to="/dashboard/profile">
-            <UserRound className="icon opacity-60" aria-hidden="true" />
-            <span>Profile</span>
-          </Link>
-        </DropdownItem>
-        <DropdownItem>
-          <button onClick={handleLogout}>
-            <LogOut className="icon opacity-60" aria-hidden="true" />
-            <span>Logout</span>
-          </button>
+        <DropdownLinkItem render={<Link to="/dashboard" />}>
+          <LayoutGrid className="opacity-60" aria-hidden="true" />
+          <span>Dashboard</span>
+        </DropdownLinkItem>
+        <DropdownLinkItem render={<Link to="/dashboard/profile" />}>
+          <UserRound className="opacity-60" aria-hidden="true" />
+          <span>Profile</span>
+        </DropdownLinkItem>
+        <DropdownItem onClick={handleLogout}>
+          <LogOut className="opacity-60" aria-hidden="true" />
+          <span>Logout</span>
         </DropdownItem>
       </DropdownItems>
     </Dropdown>

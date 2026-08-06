@@ -15,18 +15,10 @@ export function getRouter() {
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     defaultNotFoundComponent: () => {
-      return (
-        <div className="grid min-h-svh place-items-center">
-          <NotFound />
-        </div>
-      )
+      return <NotFound />
     },
     defaultErrorComponent: (props) => {
-      return (
-        <div className="grid min-h-svh place-items-center">
-          <Error {...props} />
-        </div>
-      )
+      return <Error {...props} />
     },
   })
 

@@ -16,8 +16,8 @@ const BUCKET = env.S3_BUCKET
 const SIGN_EXPIRES = 60 * 60 // presigned URLs valid for 1 hour
 
 /**
- * DEV:  direct S3 URL — Nitro dev middleware skips <img> requests so the /files route can't serve them.
- * PROD: {BETTER_AUTH_URL}/files/{key} — streamed through the app, no Vite in prod so no interception.
+ * Public URL for a stored key. Dev serves straight from S3, production
+ * streams through /files.
  */
 export function objectPublicUrl(key: string) {
   // Externally hosted media store an absolute URL as their key
@@ -30,13 +30,13 @@ export function objectPublicUrl(key: string) {
   return `${env.BETTER_AUTH_URL.replace(/\/+$/, '')}/files/${key}`
 }
 
-// Lazy, memoized client so this module is side-effect-free — bad S3 config only
-// errors when storage is used. endpoint + forcePathStyle target any S3-compatible
-// provider (R2, MinIO, …); leave unset for AWS.
+/**
+ * Lazy, memoized client, so bad S3 config only errors when storage is used.
+ * endpoint and forcePathStyle stay unset for AWS.
+ */
 let client: S3Client | undefined
 function s3() {
   client ??= new S3Client({
-    // 'auto' for S3-compatible providers; a real region (us-east-1) for AWS.
     region: env.S3_REGION,
     endpoint: env.S3_ENDPOINT || undefined,
     forcePathStyle: env.S3_FORCE_PATH_STYLE,
@@ -77,7 +77,8 @@ export async function createMultipartUpload(key: string, contentType: string) {
       ContentType: contentType,
     }),
   )
-  return { key, uploadId: out.UploadId! }
+  if (!out.UploadId) throw new Error('S3 did not return an upload id')
+  return { key, uploadId: out.UploadId }
 }
 
 // Presigned PUT URLs for parts, signed on demand so expiry starts at upload time.

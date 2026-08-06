@@ -5,13 +5,13 @@ API, Postgres via Drizzle, better-auth, BullMQ jobs, transactional email, and
 S3-compatible uploads. Builds to a plain Node server via Nitro.
 
 Everything runs locally in Docker, and `.env.local` is committed with matching
-defaults — so a fresh clone is five commands from a working app.
+defaults, so a fresh clone runs without additional setup.
 
 ## Contents
 
 1. [Requirements](#requirements)
 2. [Quick start](#quick-start)
-3. [What you get](#what-you-get) — URLs and logins
+3. [Services and URLs](#services-and-urls)
 4. [Commands](#commands)
 5. [Project layout](#project-layout)
 6. [How a feature fits together](#how-a-feature-fits-together)
@@ -40,7 +40,7 @@ No environment setup — `.env.local` is committed and already points at the
 containers. After editing `docker-compose.yml`, run `pnpm services:up` again to
 apply it.
 
-## What you get
+## Services and URLs
 
 | Service            | URL                                      | Login                                 |
 | ------------------ | ---------------------------------------- | ------------------------------------- |
@@ -52,11 +52,10 @@ apply it.
 | **Drizzle Studio** | `pnpm db:studio`                         | none                                  |
 | **Email preview**  | `pnpm email:dev` → http://localhost:3005 | none                                  |
 
-MinIO exposes **two** ports and they are not interchangeable: `9000` is the S3
-API the app writes to, `9001` is the console you browse. Uploads land in the
-`app` bucket, created automatically.
+MinIO exposes two ports: `9000` is the S3 API the app writes to, `9001` is
+the console. Uploads land in the `app` bucket, created automatically.
 
-Nothing leaves your machine — Mailpit swallows all outgoing mail.
+Mailpit captures all outgoing mail; nothing is sent externally.
 
 ## Commands
 
@@ -182,7 +181,7 @@ Form size decides the UI: ~4–5 fields → dialog on the list page; more, or fi
 uploads → separate `add.tsx` and `edit/$id.tsx` sharing a form component.
 
 **`CLAUDE.md` is the detailed spec** — procedure anatomy, the three error kinds,
-pagination, media slots, comment style, UI rules. Read it before writing code.
+pagination, media slots, comment style, and UI rules.
 
 ## Environment
 
@@ -191,7 +190,7 @@ Two files, and **`.env` always wins**:
 | File           | Committed | Purpose                                      |
 | -------------- | --------- | -------------------------------------------- |
 | `.env.local`   | yes       | Local defaults matching `docker-compose.yml` |
-| `.env`         | no        | Your overrides and every real secret         |
+| `.env`         | no        | Local overrides and real secrets             |
 | `.env.example` | yes       | Reference for the full set, for production   |
 
 Override one value by creating a `.env` with just that line; everything else
@@ -223,7 +222,7 @@ the S3 client all live inside it, so this does not target edge or serverless
 runtimes.
 
 To deploy: provide the environment (a real `.env` or injected variables), set
-`BETTER_AUTH_URL` to your actual origin, run `pnpm db:migrate`, and point
+`BETTER_AUTH_URL` to the deployed origin, run `pnpm db:migrate`, and point
 Postgres, Redis and S3 at managed instances.
 
 `BETTER_AUTH_URL` matters beyond auth — in production, uploads are served from

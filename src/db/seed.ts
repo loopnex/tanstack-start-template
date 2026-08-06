@@ -6,8 +6,8 @@ import { eq } from 'drizzle-orm'
 const PASSWORD = 'password12345'
 
 const SEED_USERS = [
-  { name: 'Admin', email: 'admin@example.com', role: 'admin' as const },
-  { name: 'User', email: 'user@example.com', role: 'user' as const },
+  { name: 'Admin', email: 'admin@example.com', role: 'admin' },
+  { name: 'User', email: 'user@example.com', role: 'user' },
 ]
 
 /**

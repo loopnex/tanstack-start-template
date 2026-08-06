@@ -1,36 +1,50 @@
-import type { FieldValues, Path, UseFormSetError } from 'react-hook-form'
+import { toORPCError } from '@orpc/client'
+import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
 import { toast } from 'sonner'
-import type { z } from 'zod'
+import * as z from 'zod'
 
-interface ApiError {
-  status?: number
-  message?: string
-  data?: { issues?: z.core.$ZodIssue[] }
-}
+const GENERIC_MESSAGE = 'Something went wrong'
+
+// What oRPC puts in error.data when .input() validation fails
+const validationSchema = z.object({
+  issues: z.array(
+    z.object({
+      message: z.string(),
+      path: z.array(z.union([z.string(), z.number()])).default([]),
+    }),
+  ),
+})
 
 /**
- * Routes an oRPC error to the UI:
- * - Validation (zod): shown inline on the related form input.
- * - Explicit (conflict, not found…): shown as a toast.
- * - Unknown (500): a generic "Something went wrong" toast.
+ * Routes an oRPC error to the UI: validation issues land inline on their field,
+ * and anything else — including an issue with no matching field — is a toast.
  */
 export function handleErrorResponse<T extends FieldValues>(
   error: unknown,
-  setError?: UseFormSetError<T>,
+  form?: UseFormReturn<T>,
 ) {
-  const { status, message, data } = error as ApiError
-  const issues = data?.issues
-  if (setError && issues) {
-    for (const { path, message: issueMessage } of issues) {
-      if (typeof path[0] === 'string') {
-        setError(path[0] as Path<T>, { message: issueMessage })
-      }
-    }
+  const { status, message, data } = toORPCError(error)
+  const validation = validationSchema.safeParse(data)
+
+  if (!validation.success) {
+    toast.error(status >= 500 ? GENERIC_MESSAGE : message || GENERIC_MESSAGE)
     return
   }
-  toast.error(
-    status && status >= 500
-      ? 'Something went wrong'
-      : (message ?? 'Something went wrong'),
-  )
+
+  const values = form?.getValues()
+
+  validation.data.issues.forEach((issue, index) => {
+    const [field] = issue.path
+    const rendered = values && typeof field === 'string' && field in values
+
+    if (form && rendered) {
+      form.setError(
+        issue.path.join('.') as Path<T>,
+        { message: issue.message },
+        { shouldFocus: index === 0 },
+      )
+    } else {
+      toast.error(issue.message)
+    }
+  })
 }

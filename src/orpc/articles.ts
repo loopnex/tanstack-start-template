@@ -52,7 +52,7 @@ const getArticles = authorized
       db.$count(articlesTable, where),
     ])
 
-    const thumbMap = await mediaService.findForIds(
+    const thumbnails = await mediaService.findForIds(
       MODEL,
       rows.map((r) => r.id),
       COLLECTION,
@@ -60,9 +60,7 @@ const getArticles = authorized
 
     const data = rows.map((r) => ({
       ...r,
-      thumbnail: thumbMap.has(r.id)
-        ? mediaService.toResult(thumbMap.get(r.id)!)
-        : null,
+      thumbnail: thumbnails.get(r.id) ?? null,
     }))
 
     return { data, meta: { page, limit, total } }
@@ -87,12 +85,10 @@ const getArticle = authorized
     if (!article)
       throw new ORPCError('NOT_FOUND', { message: 'Article not found' })
 
-    const thumb = await mediaService.findOne(MODEL, article.id, COLLECTION)
-
     return {
       ...article,
       categoryIds: article.categories.map((c) => c.categoryId),
-      thumbnail: thumb ? mediaService.toResult(thumb) : null,
+      thumbnail: await mediaService.findOne(MODEL, article.id, COLLECTION),
     }
   })
 
@@ -150,16 +146,14 @@ const createArticle = authorized
       return row
     })
 
-    const thumb = await mediaService.sync(
-      MODEL,
-      article.id,
-      COLLECTION,
-      input.thumbnailMediaId,
-    )
-
     return {
       ...article,
-      thumbnail: thumb ? mediaService.toResult(thumb) : null,
+      thumbnail: await mediaService.sync(
+        MODEL,
+        article.id,
+        COLLECTION,
+        input.thumbnailMediaId,
+      ),
     }
   })
 
@@ -216,10 +210,9 @@ const updateArticle = authorized
         .where(eq(articlesTable.id, id))
         .returning()
 
+      // Empty when the row was deleted after the existence check above
       if (!row)
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'Failed to update article',
-        })
+        throw new ORPCError('NOT_FOUND', { message: 'Article not found' })
 
       await tx
         .delete(articleCategories)
@@ -235,15 +228,14 @@ const updateArticle = authorized
       return row
     })
 
-    const thumb = await mediaService.sync(
-      MODEL,
-      id,
-      COLLECTION,
-      thumbnailMediaId,
-    )
     return {
       ...article,
-      thumbnail: thumb ? mediaService.toResult(thumb) : null,
+      thumbnail: await mediaService.sync(
+        MODEL,
+        id,
+        COLLECTION,
+        thumbnailMediaId,
+      ),
     }
   })
 

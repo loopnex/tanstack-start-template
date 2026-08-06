@@ -2,7 +2,18 @@ import { redis } from '#/lib/redis'
 import { Queue } from 'bullmq'
 
 export const EMAIL_QUEUE = 'email'
-export const emailQueue = new Queue(EMAIL_QUEUE, {
+
+// Payload for each email job, keyed by the job name
+export type EmailJobs = {
+  welcome: { to: string; name: string }
+  'password-reset': { to: string; url: string }
+}
+
+export const emailQueue = new Queue<
+  EmailJobs[keyof EmailJobs],
+  void,
+  keyof EmailJobs
+>(EMAIL_QUEUE, {
   connection: redis,
   defaultJobOptions: {
     attempts: 3, // initial try + 2 retries

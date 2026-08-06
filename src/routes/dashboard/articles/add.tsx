@@ -32,14 +32,14 @@ function AddArticlePage() {
   // Create handler
   const onSubmit = (
     values: ArticleInputSchemaType,
-    setError: UseFormReturn<ArticleInputSchemaType>['setError'],
+    form: UseFormReturn<ArticleInputSchemaType>,
   ) => {
     createMutation.mutate(values, {
       onSuccess: () => {
         toast.success('Article created')
         navigate({ to: '/dashboard/articles' })
       },
-      onError: (error) => handleErrorResponse(error, setError),
+      onError: (error) => handleErrorResponse(error, form),
     })
   }
 

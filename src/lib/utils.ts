@@ -9,15 +9,9 @@ export function cn(...inputs: Array<ClassValue>) {
 }
 
 // Format only as date
-export const formatDate = (date: string | Date) => {
-  if (!date) return
-
-  return format(new Date(date), 'dd MMM yyyy')
-}
+export const formatDate = (date: string | Date) =>
+  format(new Date(date), 'dd MMM yyyy')
 
 // Format as date and time
-export const formatDateTime = (date: string | Date) => {
-  if (!date) return
-
-  return format(new Date(date), 'dd MMM yyyy - hh:mm a')
-}
+export const formatDateTime = (date: string | Date) =>
+  format(new Date(date), 'dd MMM yyyy - hh:mm a')

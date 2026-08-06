@@ -1,6 +1,6 @@
 import * as z from 'zod'
 
-// Media schema
+// Public shape of an uploaded file
 export const mediaSchema = z.object({
   mediaId: z.string(),
   key: z.string(),

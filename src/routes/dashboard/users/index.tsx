@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from '#/components/ui/select'
 import { Textarea } from '#/components/ui/textarea'
+import { admin } from '#/lib/better-auth/auth-client'
 import { handleErrorResponse } from '#/lib/error-handler'
 import { ensureQueryData, orpc } from '#/lib/orpc'
 import { paginationHandlers } from '#/lib/pagination'
@@ -57,11 +58,7 @@ import type {
   UserFormSchemaType,
   UserSchemaType,
 } from '#/schema/userSchema'
-import {
-  USER_ROLES,
-  userFilterSchema,
-  userFormSchema,
-} from '#/schema/userSchema'
+import { userFilterSchema, userFormSchema } from '#/schema/userSchema'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   useMutation,
@@ -84,6 +81,7 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  UserCog,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -102,7 +100,13 @@ export const Route = createFileRoute('/dashboard/users/')({
   },
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) =>
-    ensureQueryData(context.queryClient, usersQuery(deps)),
+    Promise.all([
+      ensureQueryData(context.queryClient, usersQuery(deps)),
+      ensureQueryData(
+        context.queryClient,
+        orpc.users.getUserRoles.queryOptions(),
+      ),
+    ]),
   component: UsersPage,
 })
 
@@ -111,6 +115,9 @@ function UsersPage() {
   const search = Route.useSearch()
   const { session } = useRouteContext({ from: '__root__' })
   const { data: users } = useSuspenseQuery(usersQuery(search))
+  const { data: roles } = useSuspenseQuery(
+    orpc.users.getUserRoles.queryOptions(),
+  )
 
   const queryClient = useQueryClient()
   const invalidate = () =>
@@ -150,14 +157,14 @@ function UsersPage() {
 
   const form = useForm<UserFormSchemaType>({
     resolver: zodResolver(userFormSchema(selected ? 'edit' : 'create')),
-    defaultValues: { name: '', email: '', password: '', role: 'user' },
+    defaultValues: { name: '', email: '', password: '', role: '' },
     mode: 'onChange',
   })
 
   // Open create dialog
   const openCreate = () => {
     setSelected(null)
-    form.reset({ name: '', email: '', password: '', role: 'user' })
+    form.reset({ name: '', email: '', password: '', role: '' })
     setFormOpen(true)
   }
 
@@ -168,7 +175,7 @@ function UsersPage() {
       name: user.name,
       email: user.email,
       password: '',
-      role: user.role ?? 'user',
+      role: user.role ?? '',
     })
     setFormOpen(true)
   }
@@ -187,7 +194,7 @@ function UsersPage() {
         toast.success(selected ? 'User updated' : 'User created')
         setFormOpen(false)
       },
-      onError: (error: unknown) => handleErrorResponse(error, form.setError),
+      onError: (error: unknown) => handleErrorResponse(error, form),
     }
 
     if (selected) {
@@ -253,6 +260,17 @@ function UsersPage() {
     )
   }
 
+  // Impersonate handler
+  const handleImpersonate = async (user: UserSchemaType) => {
+    const { error } = await admin.impersonateUser({ userId: user.id })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    window.location.href = '/dashboard'
+  }
+
   // Table columns
   const columns: ColumnDef<UserSchemaType>[] = [
     {
@@ -278,7 +296,7 @@ function UsersPage() {
       accessorKey: 'role',
       cell: ({ row }) => (
         <Badge variant={row.original.role === 'admin' ? 'info' : 'secondary'}>
-          {row.original.role ?? 'user'}
+          {row.original.role ?? '—'}
         </Badge>
       ),
     },
@@ -310,30 +328,32 @@ function UsersPage() {
               <EllipsisVertical />
             </DropdownTrigger>
             <DropdownItems>
-              <DropdownItem>
-                <button onClick={() => openEdit(row.original)}>
-                  <Pencil />
-                  <span>Edit</span>
-                </button>
+              <DropdownItem onClick={() => openEdit(row.original)}>
+                <Pencil />
+                <span>Edit</span>
               </DropdownItem>
-              <DropdownItem disabled={isSelf}>
-                <button disabled={isSelf} onClick={() => openBan(row.original)}>
-                  {row.original.banned ? <ShieldCheck /> : <Ban />}
-                  <span>{row.original.banned ? 'Unban' : 'Ban'}</span>
-                </button>
+              <DropdownItem
+                disabled={isSelf}
+                onClick={() => handleImpersonate(row.original)}
+              >
+                <UserCog />
+                <span>Impersonate</span>
               </DropdownItem>
-              <DropdownItem disabled={isSelf}>
-                <button
-                  className="text-destructive-foreground"
-                  disabled={isSelf}
-                  onClick={() => {
-                    setSelected(row.original)
-                    setDeleteOpen(true)
-                  }}
-                >
-                  <Trash2 />
-                  <span>Delete</span>
-                </button>
+              <DropdownItem
+                disabled={isSelf}
+                onClick={() => openBan(row.original)}
+              >
+                {row.original.banned ? <ShieldCheck /> : <Ban />}
+                <span>{row.original.banned ? 'Unban' : 'Ban'}</span>
+              </DropdownItem>
+              <DropdownItem
+                onClick={() => {
+                  setSelected(row.original)
+                  setDeleteOpen(true)
+                }}
+              >
+                <Trash2 />
+                <span>Delete</span>
               </DropdownItem>
             </DropdownItems>
           </Dropdown>
@@ -404,7 +424,7 @@ function UsersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={null}>All Roles</SelectItem>
-              {USER_ROLES.map((role) => (
+              {roles.map((role) => (
                 <SelectItem key={role} value={role} className="capitalize">
                   {role}
                 </SelectItem>
@@ -489,7 +509,7 @@ function UsersPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {USER_ROLES.map((role) => (
+                          {roles.map((role) => (
                             <SelectItem
                               key={role}
                               value={role}

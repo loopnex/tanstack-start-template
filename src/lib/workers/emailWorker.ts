@@ -15,7 +15,7 @@ const worker = new Worker(
         throw new Error(`Unknown email job: ${job.name}`)
     }
   },
-  { connection: redis, concurrency: 5 }, // Concurrency matches the nodemailer pool's maxConnections.
+  { connection: redis, concurrency: 5 }, // Matches the mailer's pooled connection count
 )
 
 worker.on('ready', () => console.log('[email] worker ready'))
